@@ -1,0 +1,37 @@
+<svg height="512" width="512" xmlns="http://www.w3.org/2000/svg">
+    <style>
+        @import url('https://fonts.googleapis.com/css?family=Roboto');
+        @import url('https://fonts.googleapis.com/css?family=Macondo');
+        @import url('https://fonts.googleapis.com/css?family=Montserrat');
+        @font-face {
+        font-family: 'Montserrat';
+        src: url('file:///F:\stazhirovka2021\Diploma\covergan-test\covergan\fonts\Montserrat-SemiBold.ttf')
+        format('truetype');
+        font-weight: 800;
+        font-style: normal;
+        }
+    </style>
+    <rect width="512" height="512" fill="white" fill-opacity="1"/>
+    <text font-size="34" x="200" y="50" font-family="Roboto" font-weight="bolder">
+        Words go here
+    </text>
+    <text font-size="34" x="200" y="90">Words go here</text>
+    <text font-size="34" x="200" y="130" font-family="Poppins-Bold, Poppins">
+        Words go here
+    </text>
+    <text font-size="34" x="200" y="170" font-family="Macondo">
+        Words go here
+    </text>
+    <text font-size="34" x="200" y="210" font-family="Montserrat">
+        Words go here
+    </text>
+    <text font-size="34" x="200" y="250" font-family="Roboto Condensed">
+        Words go here
+    </text>
+    <text font-size="34" x="200" y="290" font-family="Open Sans">
+        Words go here
+    </text>
+    <text font-size="34" x="200" y="330" font-family="Anonymous Pro">
+        Words go here
+    </text>
+</svg>

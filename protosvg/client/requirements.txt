@@ -1,0 +1,7 @@
+appdirs==1.4.4
+grpcio==1.35.0
+grpcio-tools==1.35.0
+packaging==20.9
+protobuf==3.14.0
+pyparsing==2.4.7
+six==1.15.0

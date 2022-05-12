@@ -1,0 +1,224 @@
+syntax = "proto3";
+
+package protosvg;
+
+message Point {
+    int32 x = 1;
+    int32 y = 2;
+}
+
+message MoveTo {
+    Point to = 1;
+}
+
+message LineTo {
+    Point to = 1;
+}
+
+// Cubic Bézier Curve
+message CubicTo {
+    Point startControl = 1;
+    Point endControl = 2;
+    Point end = 3;
+}
+
+// Quadratic Bézier Curve
+message QuadTo {
+    Point control = 1;
+    Point end = 2;
+}
+
+// Elliptical Arc Curve
+message ArcTo {
+    uint32 radiusX = 1;
+    uint32 radiusY = 2;
+    uint32 xAxisRotation = 3;
+    bool largeArc = 4;
+    bool sweep = 5;
+    Point end = 6;
+}
+
+message ClosePath {}
+
+message PathSegment {
+    oneof segment {
+        MoveTo move = 1;
+        LineTo line = 2;
+        CubicTo cubic = 3;
+        QuadTo quad = 4;
+        ArcTo arc = 5;
+        ClosePath close = 6;
+    }
+    bool relative = 100;
+}
+
+message Path {
+    repeated PathSegment segments = 1;
+}
+
+message Rectangle {
+    Point start = 1;
+
+    uint32 width = 2;
+    uint32 height = 3;
+
+    uint32 cornerRadiusX = 4;
+    uint32 cornerRadiusY = 5;
+}
+
+message Ellipse {
+    Point center = 1;
+    
+    uint32 radiusX = 2;
+    uint32 radiusY = 3;
+}
+
+message Square {
+    Point start = 1;
+
+    uint32 width = 2;
+
+    uint32 cornerRadiusX = 3;
+    uint32 cornerRadiusY = 4;
+}
+
+message Circle {
+    Point center = 1;
+    uint32 radius = 2;
+}
+
+message Font {
+    enum FontStyle {
+        NORMAL_STYLE = 0;
+        ITALIC = 1;
+        OBLIQUE = 2;
+    }
+
+    enum FontStretch {
+        NORMAL_STRETCH = 0;
+        ULTRA_CONDENSED = 1;
+        EXTRA_CONDENSED = 2;
+        CONDENSED = 3;
+        SEMI_CONDENSED = 4;
+        SEMI_EXPANDED = 5;
+        EXPANDED = 6;
+        EXTRA_EXPANDED = 7;
+        ULTRA_EXPANDED = 8;
+    }
+
+    float size = 1;
+    string family = 2;
+
+    FontStyle style = 3;
+    bool smallCaps = 4;
+    uint32 weight = 5;
+    FontStretch stretch = 6;
+}
+
+message Label {
+    enum LengthAdjust {
+        SPACING = 0;
+        SPACING_AND_GLYPHS = 1;
+    }
+
+    enum WritingMode {
+        HORIZONTAL_TOP_BOTTOM = 0;
+        VERTICAL_RIGHT_LEFT = 1;
+        VERTICAL_LEFT_RIGHT = 2;
+    }
+
+    string text = 1;
+    Font font = 2;
+
+    Point start = 3;
+    uint32 characterRotation = 4;
+
+    uint32 textLength = 5;
+    LengthAdjust lengthAdjust = 6;
+    WritingMode writingMode = 7;
+}
+
+message Transform {
+    float a = 1;
+    float b = 2;
+    float c = 3;
+    float d = 4;
+    float e = 5;
+    float f = 6;
+}
+
+message Color {
+    uint32 rgba = 1;
+}
+
+message GradientStop {
+    float offset = 1; // 0..1
+    Color color = 2;
+}
+
+message BaseGradient {
+    enum SpreadMethod {
+        PAD = 0;
+        REFLECT = 1;
+        REPEAT = 2;
+    }
+
+    repeated GradientStop stops = 1;
+    Transform transform = 2;
+    SpreadMethod spreadMethod = 3;
+}
+
+message LinearGradient {
+    BaseGradient base = 1;
+
+    Point start = 2;
+    Point end = 3;
+}
+
+message RadialGradient {
+    BaseGradient base = 1;
+
+    Point start = 2;
+    Point end = 3;
+
+    uint32 startRadius = 4;
+    uint32 endRadius = 5;
+}
+
+message Stroke {
+    enum StrokeLineJoin {
+        MITER = 0;
+        ROUND = 1;
+        BEVEL = 2;
+    }
+    uint32 width = 1;
+    Color color = 2;
+    StrokeLineJoin lineJoin = 3;
+}
+
+message Shape {
+    oneof shape {
+        Path path = 1;
+        Rectangle rectangle = 2;
+        Ellipse ellipse = 3;
+        Square square = 4;
+        Circle circle = 5;
+        Label label = 6;
+    };
+    oneof fill {
+        Color color = 101;
+        LinearGradient linearGradient = 102;
+        RadialGradient radialGradient = 103;
+    };
+    Stroke stroke = 200;
+    Transform transform = 201;
+}
+
+message ProtoSVG {
+    uint32 width = 1;
+    uint32 height = 2;
+
+    Color backgroundColor = 3;
+    
+    repeated Shape shapes = 100;
+}

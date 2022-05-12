@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package service;
+
+import "protosvg.proto";
+
+
+service PSVG {
+    rpc Convert (ConvertRequest) returns (ConvertReply);
+    rpc Render (RenderRequest) returns (RenderReply);
+}
+
+message ConvertRequest {
+    protosvg.ProtoSVG svg = 1;
+}
+
+message ConvertReply {
+    string svg_xml = 1;
+}
+
+message RenderRequest {
+    protosvg.ProtoSVG svg = 1;
+}
+ 
+message RenderReply {
+    string svg_xml = 1;
+    bytes png_data = 2;
+}

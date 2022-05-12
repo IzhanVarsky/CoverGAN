@@ -1,0 +1,36 @@
+Train the CoverGAN Network.
+
+Usage: covergan_train.py [OPTIONS]
+
+Example of emotions.json file:
+    [
+        ["track1.mp3", ["emotion1", "emotion2"]],
+        ["track2.mp3", ["emotion1", "emotion2"]],
+        ["track3.mp3", ["emotion1", "emotion2", "emotion3"]]
+    ]
+
+Options:
+  --audio DIR                   Directory with the music files [default: "./audio"]
+  --covers DIR                  Directory with the cover images [default: "./clean_covers"]
+  --emotions PATH_TO_JSON       File with emotion markup for train dataset.
+                                In this file for each music track its emotions are indicated.
+  --checkpoint_root DIR         Checkpoint location [default: "./checkpoint"]
+
+  --test_set DIR                Directory with test music files.
+                                If the metadata extractor can not manage finding covers
+                                on the Internet, add covers of such dtracks to the same folder.
+  --test_emotions PATH_TO_JSON  File with emotion markup for test dataset.
+                                In this file for each music track its emotions are indicated.
+
+  --lr FLOAT                    Learning rate [default: 0.0005]
+  --disc_repeats INT            Discriminator runs per iteration [default: 5]
+  --epochs INT                  Number of epochs to train for [default: 8000]
+  --batch_size INT              Batch size [default: 64]
+  --canvas_size INT             Image canvas size for learning [default: 128]
+  --display_steps INT           How often to plot the samples [default: 500]
+  --backup_epochs INT           How often to backup checkpoints [default: 600]
+
+  --augment_dataset             Whether to augment the dataset [default: False]
+  --plot_grad                   Whether to plot the gradients [default: False]
+
+  -h, --help                    Show help message and exit

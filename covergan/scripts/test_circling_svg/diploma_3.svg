@@ -1,0 +1,18 @@
+<?xml version="1.0" ?>
+    <svg height="256" width="256"
+         version="1.1" xmlns="http://www.w3.org/2000/svg">
+        <rect fill="white" height="256.0" width="256.0"/>
+        <path d="M 40 50
+                 C 50 85 85 105 120 128.75
+                 C 155 152.5 190 180 200 230"
+              fill="None" stroke-width="5" stroke="blue"/>
+        <circle cx="40" cy="50" r="5" fill="green"/>
+        <circle cx="50" cy="85" r="5" fill="red"/>
+        <circle cx="85" cy="105" r="5" fill="red"/>
+        <circle cx="120" cy="128.75" r="5" fill="yellow"/>
+        <circle cx="155" cy="152.5" r="5" fill="red"/>
+        <circle cx="190" cy="180" r="5" fill="red"/>
+        <circle cx="200" cy="230" r="5" fill="black"/>
+    </svg>
+
+

@@ -1,0 +1,24 @@
+Test the CoverGAN.
+
+Usage: eval.py [OPTIONS]
+
+Options:
+  --gan_weights DIR          Model weights for CoverGAN [default: "./weights/covergan.pt"]
+  --captioner_weights DIR    Captioner weights [default: "./weights/captioner.pt"]
+  --protosvg_address STR     ProtoSVG rendering server [default: "localhost:50051"]
+  --font_dir DIR             Directory with font files [default: "./fonts"]
+  --output_dir DIR           Directory where to save SVG covers [default: "./gen_samples"]
+  --num_samples INT          Number of samples to generate [default: 5]
+
+  --audio_file STR           Path to the audio file to process [required]
+  --emotions STR             Emotion of the audio file [required]
+  --track_artist STR         Track artist [required]
+  --track_name STR           Track name [required]
+
+  --filter                   Overlay filter to apply to the final image [default: False]
+  --rasterize                Whether to rasterize the generated cover [default: False]
+  --watermark                Whether to add watermark [default: False]
+  --deterministic            Whether to disable random noise [default: False]
+  --debug                    Whether to enable debug features [default: False]
+
+  -h, --help                 Show help message and exit

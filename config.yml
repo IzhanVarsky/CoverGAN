@@ -1,0 +1,10 @@
+app:
+  port: 5001
+  host: "0.0.0.0"
+  thread_pool: 5
+  log_level: "INFO"
+service:
+  protosvg_address: "localhost:50051"
+  font_dir: "/inference-api/covergan/fonts"
+  gan_weights: "/inference-api/covergan/weights/covergan.pt"
+  captioner_weights: "/inference-api/covergan/weights/captioner.pt"

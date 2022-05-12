@@ -1,0 +1,27 @@
+    <svg height="256" width="256"
+         version="1.1" xmlns="http://www.w3.org/2000/svg">
+        <rect fill="white" height="256.0" width="256.0"/>
+        <path d="M 128 78
+                     C 261 78 261 178 128 178
+                     C -5 178 -5 78 128 78"
+              fill="lightgreen" opacity="1.0"/>
+        <circle cx="128" cy="78" r="3" fill="green"/>
+        <circle cx="128" cy="178" r="3" fill="green"/>
+        <path d="M 128 98
+                     C 168 98 168 158 128 158
+                     C 88 158 88 98 128 98"
+              fill="red" opacity="0.8"/>
+        <circle cx="128" cy="98" r="3" fill="black"/>
+        <circle cx="128" cy="158" r="3" fill="black"/>
+    </svg>
+
+
+
+
+
+
+
+
+
+
+

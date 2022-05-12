@@ -1,0 +1,19 @@
+Train the Captioner Network.
+
+Usage: captioner_train.py [OPTIONS]
+
+Options:
+  --original_covers DIR     Directory with the original cover images [default: "./original_covers"]
+  --clean_covers DIR        Directory with the cover images with captions removed
+                                [default: "./clean_covers"]
+  --checkpoint_root DIR     Checkpoint location [default: "./checkpoint"]
+
+  --lr FLOAT                Learning rate [default: 0.001]
+  --epochs INT              Number of epochs to train for [default: 138]
+  --batch_size INT          Batch size [default: 64]
+  --canvas_size INT         Image canvas size for learning [default: 256]
+  --display_steps INT       How often to plot the samples [default: 10]
+
+  --plot_grad               Whether to plot the gradients [default: False]
+
+  -h, --help                Show help message and exit

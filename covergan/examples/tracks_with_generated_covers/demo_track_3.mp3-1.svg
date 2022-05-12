@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+    <defs/>
+    <rect width="512" height="512" fill="#FFE566" fill-opacity="1"/>
+    <path fill="#002099" fill-opacity="0.61960787" stroke="#EEF6EE" stroke-opacity="1" stroke-width="5" stroke-linejoin="miter" d="M -168,-49
+C 606,405 156,26 412,256
+C 149,335 -128,456 140,533
+C 254,-75 376,179 95,163
+C 200,62 -199,-116 -210,255
+Z "/>
+    <path fill="#FEAD0B" fill-opacity="0.8784314" stroke="#E40519" stroke-opacity="0.8666667" stroke-width="5" stroke-linejoin="miter" d="M -118,766
+C -62,766 767,767 760,735
+C -172,109 712,-251 -251,746
+C -81,-167 -163,-249 744,-240
+C 757,692 -254,743 -248,-249
+Z "/>
+    <path fill="#DEFCFC" fill-opacity="0.007843138" stroke="#000000" stroke-opacity="1" stroke-width="0" stroke-linejoin="miter" d="M 517,559
+C 720,234 720,729 -29,712
+C 505,-159 -254,497 654,130
+C 435,373 -187,428 670,222
+C -249,-206 435,713 563,606
+Z "/>
+    <text fill="#755F50" fill-opacity="1" x="149" y="439" style="font-size:47px;font-weight:400;font-family:Titillium Web;font-style:normal;font-stretch:normal" lengthAdjust="spacing" writing-mode="lr">
+        Cool Band
+    </text>
+    <text fill="#755F50" fill-opacity="1" x="148" y="468" style="font-size:21px;font-weight:700;font-family:Titillium Web;font-style:normal;font-stretch:normal" textLength="201" lengthAdjust="spacing" writing-mode="lr">
+        New Song
+    </text>
+</svg>

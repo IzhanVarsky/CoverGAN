@@ -1,11 +1,11 @@
 import logging
 import os
-from enum import Enum
 from itertools import repeat
 from multiprocessing import Pool
 from pathlib import Path
 from typing import Optional, Tuple
 
+import PIL.Image
 import numpy as np
 import torch
 from torch.utils.data.dataset import Dataset
@@ -13,6 +13,7 @@ from torch.utils.data.dataset import Dataset
 from outer.emotions import emotions_one_hot, read_emotion_file
 from outer.metadata_extractor import get_tag_map
 from utils.filenames import normalize_filename
+from utils.image_clustering import cluster
 
 logger = logging.getLogger("dataset")
 logger.addHandler(logging.StreamHandler())
@@ -21,12 +22,6 @@ logger.setLevel(logging.WARNING)
 
 MUSIC_EXTENSIONS = ['flac', 'mp3']
 IMAGE_EXTENSION = '.jpg'
-
-
-class AugmentTransform(Enum):
-    NONE = 0
-    FLIP_H = 1
-    FLIP_V = 2
 
 
 def filename_extension(file_path: str) -> str:
@@ -39,14 +34,28 @@ def replace_extension(file_path: str, new_extension: str) -> str:
     return file_path[:last_dot] + new_extension
 
 
-def image_file_to_palette(f: str, cover_dir: str, color_count: int, color_type: str = 'rgb'):
+def get_main_rgb_palette(f_path: str, color_count: int, quality=5):
     from colorthief import ColorThief
+    color_thief = ColorThief(f_path)
+    return color_thief.get_palette(color_count=color_count + 1, quality=quality)
 
+
+def get_main_rgb_palette2(f_path: str, color_count: int, sort_colors=True):
+    pil_image = PIL.Image.open(f_path).convert(mode='RGB')
+    labels, centers = cluster(np.asarray(pil_image), k=color_count, only_labels_centers=True)
+    if not sort_colors:
+        return [list(x) for x in centers]
+
+    from collections import Counter
+    dict = Counter(labels.flatten())
+    sorted_labels = sorted(dict.items(), key=lambda x: x[1], reverse=True)
+    palette = [list(centers[label[0]]) for label in sorted_labels]
+    return palette
+
+
+def image_file_to_palette(f: str, cover_dir: str, color_count: int, color_type: str = 'rgb'):
     cover_file = f'{cover_dir}/{replace_extension(f, IMAGE_EXTENSION)}'
-    # logger.info(f'Reading image file {cover_file} to a tensor')
-
-    color_thief = ColorThief(cover_file)
-    palette = color_thief.get_palette(color_count=color_count, quality=5)
+    palette = get_main_rgb_palette(cover_file, color_count)
     palette = [list(t) for t in palette]
     palette = palette + palette[:color_count - len(palette)]
     assert len(palette) == color_count
@@ -122,7 +131,6 @@ class MusicPaletteDataset(Dataset[Tuple[torch.Tensor, torch.Tensor]]):
         self.checkpoint_root_ = f'{checkpoint_dir}/{name}'
         self.palette_checkpoint_root_ = f'{checkpoint_dir}/{self.palette_name}/' \
                                         f'palette_{self.color_type}_count_{self.palette_count}'
-        self.augment_ = augment
         self.cache_ = {} if should_cache else None
 
         self.is_for_train = is_for_train
@@ -234,10 +242,7 @@ class MusicPaletteDataset(Dataset[Tuple[torch.Tensor, torch.Tensor]]):
         if self.cache_ is not None and index in self.cache_:
             return self.cache_[index]
 
-        if self.augment_:
-            track_index = index // len(AugmentTransform)
-        else:
-            track_index = index
+        track_index = index
         f = self.dataset_files_[track_index]
 
         music_tensor = read_tensor_from_file(f, self.checkpoint_root_)
@@ -261,7 +266,4 @@ class MusicPaletteDataset(Dataset[Tuple[torch.Tensor, torch.Tensor]]):
         return result
 
     def __len__(self) -> int:
-        result = len(self.dataset_files_)
-        if self.augment_:
-            result *= len(AugmentTransform)
-        return result
+        return len(self.dataset_files_)

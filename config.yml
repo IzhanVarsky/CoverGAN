@@ -6,5 +6,7 @@ app:
 service:
   protosvg_address: "localhost:50051"
   font_dir: "/inference-api/covergan/fonts"
-  gan_weights: "/inference-api/covergan/weights/covergan.pt"
+  gan_weights_ilya: "/inference-api/covergan/weights/covergan_ilya.pt"
   captioner_weights: "/inference-api/covergan/weights/captioner.pt"
+  gan_weights_2: "/inference-api/covergan/weights/checkpoint_6figs_5depth_512noise.pt"
+  colorer_12_weights: "/inference-api/covergan/weights/colorer_12_colors-1800.pt"

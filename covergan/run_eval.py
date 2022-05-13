@@ -11,9 +11,9 @@ from outer.emotions import Emotion, emotion_from_str, emotions_one_hot
 from outer.models.my_generator_fixed_six_figs import MyGeneratorFixedSixFigs
 from outer.models.my_generator_rand_figure import MyGeneratorRandFigure
 from protosvg.client import PSVG
-from scripts.bbox_finder.test_bbox_finder import draw_phrases, get_all_boxes_info_to_paste, draw_to_draw_object
 from service_utils import *
 from utils.bboxes import BBox
+from utils.deterministic_text_fitter import get_all_boxes_info_to_paste, draw_to_draw_object
 from utils.noise import get_noise
 
 # import cairosvg
@@ -157,7 +157,7 @@ def run_track(audio_file_name, track_artist, track_name,
             pil_img = pils_render[i]
             pil_img.save(f"{output_dir}/debug.png")
             draw = ImageDraw.Draw(pil_img, mode='RGB')
-            to_draw = get_all_boxes_info_to_paste(track_artist, track_name, np.asarray(pil_img), for_svg=True)
+            to_draw = get_all_boxes_info_to_paste(track_artist, track_name, np.asarray(pil_img), font_dir, for_svg=True)
             for x in to_draw:
                 draw_to_draw_object(draw, x)
                 if x["type"] == "text":

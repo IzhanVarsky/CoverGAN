@@ -27,6 +27,7 @@ googletrans
 lyricsgenius
 svglib
 reportlab
+lxml
 
 # Server dependencies
 cherrypy==18.1.1

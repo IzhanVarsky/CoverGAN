@@ -145,3 +145,36 @@ Example:
 
 See [this](./covergan/examples/tracks_with_generated_covers) folder with simple music tracks and their generated covers.
 
+## Full datasets
+
+* `https://drive.google.com/file/d/1_NKlS79y29_he9P3xTLd7SgYbOstCkmO/view?usp=sharing` (not needed for service)
+
+## For service deploying:
+
+#### Weights:
+
+* `https://drive.google.com/file/d/1ArU0TziLBOxhphG4KBshUxPBBECErxu1/view?usp=sharing`
+* these weights should be in `/covergan/weights`
+
+#### Building:
+
+* run `docker_build_covergan_service.sh`
+
+#### Running:
+
+* run `docker_run_covergan_service.sh`
+
+#### Testing:
+
+* run `test_server.sh`
+* outputs: `output[1-4].json`
+* convert json output to files: run `json_output_reader.py` script
+* find results in `out` folder
+
+#### Проблемы:
+
+* Пока не успел написать сервачную часть переноса стиля
+* Сервис выдает json, потому что я не смог понять, как его заставить выдавать html (cherrypy не моё)
+* Я не понял, как он преобразует типы, например если передавать "http://....?rasterize=False", то он строку "False"
+  видимо преобразовывает в bool как True. Я хз можно ли это сделать автоматически, не руками
+* Шрифт при растеризации может поехать (и наоборот), потому что стандарты в SVG и в Pillow разные.

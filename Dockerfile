@@ -9,8 +9,6 @@ COPY ./protosvg .
 RUN rustup component add rustfmt
 RUN cargo install --locked --path .
 
-
-
 FROM python:3.7
 
 EXPOSE 5001
@@ -31,7 +29,9 @@ RUN apt-get update && \
 COPY --from=builder /usr/local/cargo/bin/protosvg /usr/bin/protosvg
 
 # Install PyTorch
-RUN pip install torch==1.9.0+cu111 torchvision==0.10.0+cu111 torchaudio==0.9.0 -f https://download.pytorch.org/whl/torch_stable.html
+#RUN pip install torch==1.9.0+cu111 torchvision==0.10.0+cu111 torchaudio==0.9.0 -f https://download.pytorch.org/whl/torch_stable.html
+RUN pip3 install torch==1.10.0+cu113 torchvision==0.11.1+cu113 torchaudio==0.10.0+cu113 -f https://download.pytorch.org/whl/cu113/torch_stable.html
+#RUN pip3 install torch torchvision torchaudio
 
 # Install other Python libraries
 COPY ./requirements.txt /inference-api/requirements.txt
@@ -49,15 +49,26 @@ RUN rm -rf /tmp/builds
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 # Copy CoverGAN
-COPY ./covergan /inference-api/covergan
+#COPY ./covergan /inference-api/covergan
+COPY ./covergan/captions /inference-api/covergan/captions
+COPY ./covergan/colorer /inference-api/covergan/colorer
+COPY ./covergan/fonts /inference-api/covergan/fonts
+COPY ./covergan/outer /inference-api/covergan/outer
+COPY ./covergan/protosvg /inference-api/covergan/protosvg
+COPY ./covergan/scripts /inference-api/covergan/scripts
+COPY ./covergan/utils /inference-api/covergan/utils
+COPY ./covergan/*.py /inference-api/covergan/
+COPY ./covergan/weights /inference-api/covergan/weights
 
 WORKDIR /inference-api/covergan
 
 # Copy backend files
+#COPY . .
 COPY ./gen.py ./gen.py
 COPY ./server.py ./server.py
 COPY ./config.yml ./config.yml
-
+COPY ./fonts_cfg.py ./fonts_cfg.py
+COPY ./service_utils.py ./service_utils.py
 
 # Run the processes
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

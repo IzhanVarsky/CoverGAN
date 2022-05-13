@@ -1,5 +1,7 @@
+import math
 import os
 import random
+from enum import Enum
 from io import BytesIO
 from typing import Tuple, Optional
 
@@ -14,6 +16,70 @@ from utils.bboxes import BBox, merge_bboxes
 from utils.color_contrast import sufficient_contrast, contrast
 from utils.color_extractor import extract_primary_color
 from utils.text_fitter import fit_text
+
+SERVICE_NAME = "PROTECTED"
+
+
+class OverlayFilter(Enum):
+    DIM = 0
+    VIGNETTE = 1
+    VINTAGE = 2
+    SEPIA = 3
+    WHITEN = 4
+
+
+def add_filter(image: psvg.ProtoSVG, f: OverlayFilter):
+    overlay = psvg.Square()
+    overlay.start.x = 0
+    overlay.start.y = 0
+    overlay.width = image.width
+    s = image.shapes.add()
+    s.square.CopyFrom(overlay)
+
+    if f == OverlayFilter.DIM:
+        s.color.rgba = color_to_int(r=0, g=0, b=0, a=100)
+    elif f == OverlayFilter.VINTAGE:
+        s.color.rgba = color_to_int(r=255, g=244, b=226, a=100)
+    elif f == OverlayFilter.SEPIA:
+        s.color.rgba = color_to_int(r=173, g=129, b=66, a=100)
+    elif f == OverlayFilter.WHITEN:
+        s.color.rgba = color_to_int(r=255, g=255, b=255, a=100)
+    elif f == OverlayFilter.VIGNETTE:
+        gradient = psvg.RadialGradient()
+
+        # Center
+        stop = gradient.base.stops.add()
+        stop.offset = 0
+        stop.color.rgba = color_to_int(r=0, g=0, b=0, a=0)
+        # Circular start
+        stop = gradient.base.stops.add()
+        stop.offset = 0.7
+        stop.color.rgba = color_to_int(r=0, g=0, b=0, a=0)
+        # End
+        stop = gradient.base.stops.add()
+        stop.offset = 1.0
+        stop.color.rgba = color_to_int(r=0, g=0, b=0, a=153)
+
+        gradient.end.x = image.width // 2
+        gradient.end.y = image.height // 2
+        gradient.endRadius = math.ceil(image.width / math.sqrt(2))
+        s.radialGradient.CopyFrom(gradient)
+
+
+def add_watermark(image: psvg.ProtoSVG):
+    label = psvg.Label()
+
+    label.font.size = 40
+    label.font.family = "Roboto"
+    label.font.weight = 700
+
+    label.text = SERVICE_NAME
+    label.start.x = image.width - 300
+    label.start.y = image.height - 30
+
+    s = image.shapes.add()
+    s.label.CopyFrom(label)
+    s.color.rgba = color_to_int(r=255, g=255, b=255, a=100)
 
 
 def rgb_tuple_to_int(rgb: Tuple[int, int, int]) -> int:
@@ -73,13 +139,11 @@ def add_ready_text_node(image: psvg.ProtoSVG,
                         text: str,
                         text_color: tuple,
                         font: ImageFont.FreeTypeFont,
-                        xy,
-                        rt=None):
+                        xy, rt):
     label = psvg.Label()
     x, y = xy
-    if rt is not None:
-        r, t = rt
-        label.textLength = r - x
+    r, t = rt
+    label.textLength = r - x
     label.font.size = font.size
     font_family = font.font.family
     font_style = font.font.style

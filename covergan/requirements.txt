@@ -27,3 +27,4 @@ googletrans
 lyricsgenius
 svglib
 reportlab
+lxml

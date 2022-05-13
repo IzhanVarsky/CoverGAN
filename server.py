@@ -36,10 +36,14 @@ def base64_encode(img):
 
 def process_generate_request(tmp_filename: str,
                              track_artist: str, track_name: str,
-                             emotions: [Emotion]) -> [(str, str)]:
+                             emotions: [Emotion],
+                             rasterize: bool,
+                             gen_type: str,
+                             use_captioner: bool) -> [(str, str)]:
     start = time.time()
 
-    logger.info(f"REQ: artist={track_artist}, name={track_name}, emotions={emotions}")
+    logger.info(f"REQ: artist={track_artist}, name={track_name}, emotions={emotions}, " +
+                f"rasterize={rasterize}, gen_type={gen_type}, use_captioner={use_captioner}")
 
     mime = magic.Magic(mime=True)
     ext = mimetypes.guess_extension(mime.from_file(tmp_filename))
@@ -56,10 +60,9 @@ def process_generate_request(tmp_filename: str,
         os.rename(tmp_filename, tmp_filename + ext)
         tmp_filename += ext
 
-    rasterize = False
-
     # Execute the actual heavy computation in a process pool to escape GIL
-    result = process_pool.apply(do_generate, (tmp_filename, track_artist, track_name, emotions, rasterize))
+    result = process_pool.apply(do_generate, (tmp_filename, track_artist, track_name, emotions,
+                                              rasterize, gen_type, use_captioner))
     os.remove(tmp_filename)
     if rasterize:
         result = list(map(lambda x: {"svg": x[0], "base64": base64_encode(x[1])}, result))
@@ -88,7 +91,8 @@ class ApiServerController(object):
     @cherrypy.expose
     @cherrypy.tools.gzip()
     @cherrypy.tools.json_out()
-    def generate(self, audio_file, track_artist: str, track_name: str, emotion: str = None):
+    def generate(self, audio_file, track_artist: str, track_name: str, emotion: str = None,
+                 rasterize=True, gen_type="2", use_captioner=False):
         if emotion is None:
             emotion = random.choice(list(Emotion))
         else:
@@ -110,7 +114,8 @@ class ApiServerController(object):
         return process_generate_request(
             tmp_filename,
             track_artist, track_name,
-            [emotion]
+            [emotion], rasterize,
+            gen_type, use_captioner
         )
 
 
@@ -118,7 +123,7 @@ if __name__ == '__main__':
     freeze_support()
     cherrypy.tree.mount(ApiServerController(), '/')
 
-    cherrypy.init_func_types_config.update({
+    cherrypy.config.update({
         'server.socket_port': config["app"]["port"],
         'server.socket_host': config["app"]["host"],
         'server.thread_pool': config["app"]["thread_pool"],

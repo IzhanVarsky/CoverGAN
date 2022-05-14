@@ -29,67 +29,6 @@ logger = logging.getLogger("server")
 logger.addHandler(logging.StreamHandler())
 logger.setLevel(log_level)
 
-html_header = \
-    """
-    <html>
-        <head>
-            <title>CoverGAN</title>
-        </head>
-        <body>
-    """
-
-html_footer = \
-    """
-        </body>
-    </html>
-    """
-
-html_body = \
-    """
-    <p>
-    <form action="generate" method="post" enctype="multipart/form-data">
-        Audio file: <input type="file" name="audio_file">  <br> <br>
-        Artist name: <input type="text" name="track_artist">  <br> <br>
-        Track name: <input type="text" name="track_name">  <br> <br>
-        Emotion: <select name="emotion">
-                  <option selected>ANGER</option>
-                <option>COMFORTABLE</option>
-                <option>FEAR</option>
-                <option>FUNNY</option>
-                <option>HAPPY</option>
-                <option>INSPIRATIONAL</option>
-                <option>JOY</option>
-                <option>LONELY</option>
-                <option>NOSTALGIC</option>
-                <option>PASSIONATE</option>
-                <option>QUIET</option>
-                <option>RELAXED</option>
-                <option>ROMANTIC</option>
-                <option>SADNESS</option>
-                <option>SERIOUS</option>
-                <option>SOULFUL</option>
-                <option>SURPRISE</option>
-                <option>SWEET</option>
-                <option>WARY</option>
-                 </select>  <br> <br>
-        Generator type: <select name="gen_type">
-                           <option>2</option>
-                           <option>1</option>
-                        </select>  <br> <br>
-        Rasterize: <select name="rasterize">
-                           <option>True</option>
-                           <option>False</option>
-                        </select>  <br> <br>
-        Captioner type: <select name="use_captioner">
-                           <option value="False">2</option>
-                           <option value="True">1</option>
-                        </select>  <br> <br>
-        <input type="submit" value="Upload">
-        </div>
-    </form>
-    </p>
-    """
-
 
 def base64_encode(img):
     return base64.b64encode(img).decode('utf-8')
@@ -149,21 +88,11 @@ class ApiServerController(object):
         }
         return json.dumps(result).encode("utf-8")
 
-    @cherrypy.expose('/')
-    def index(self):
-        return html_header + html_body + html_footer
-
     @cherrypy.expose
+    @cherrypy.tools.gzip()
+    @cherrypy.tools.json_out()
     def generate(self, audio_file, track_artist: str, track_name: str, emotion: str = None,
                  rasterize=True, gen_type="2", use_captioner=False):
-        if rasterize == "True":
-            rasterize = True
-        else:
-            rasterize = False
-        if use_captioner == "True":
-            use_captioner = True
-        else:
-            use_captioner = False
         if emotion is None:
             emotion = random.choice(list(Emotion))
         else:
@@ -182,25 +111,12 @@ class ApiServerController(object):
                     break
                 f.write(data)
 
-        generated = process_generate_request(
+        return process_generate_request(
             tmp_filename,
             track_artist, track_name,
             [emotion], rasterize,
             gen_type, use_captioner
         )
-        res_html = html_header
-        res_html += "<h2>Generated SVG's:</h2>"
-        for x in generated:
-            res_html += x["svg"] + '\n'
-        if rasterize:
-            res_html += "<h2>Rasterized SVG's:</h2>"
-            for x in generated:
-                b64 = x["base64"]
-                img_ = f'<img src="data:image/png;base64, {b64}" alt="rasterized img"/>'
-                res_html += img_ + '\n'
-        res_html += html_body
-        res_html += html_footer
-        return res_html
 
 
 if __name__ == '__main__':
@@ -217,7 +133,7 @@ if __name__ == '__main__':
         'tools.response_headers.on': True,
         'tools.encode.encoding': 'utf-8',
         'tools.response_headers.headers': [
-            ('Content-Type', 'text/html;encoding=utf-8')
+            ('Content-Type', 'application/json;encoding=utf-8')
         ],
     })
 

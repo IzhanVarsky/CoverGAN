@@ -154,8 +154,17 @@ class ApiServerController(object):
         return html_header + html_body + html_footer
 
     @cherrypy.expose
-    def generate(self, audio_file, track_artist: str, track_name: str, emotion: str = None,
+    def generate(self, audio_file=None, track_artist: str = None, track_name: str = None, emotion: str = None,
                  rasterize=True, gen_type="2", use_captioner=False):
+        print("audio_file:", audio_file)
+        print("track_artist:", track_artist)
+        print("track_name:", track_name)
+        if audio_file is None or \
+                audio_file.file is None or \
+                track_artist is None or \
+                track_name is None:
+            raise cherrypy.HTTPRedirect("/")
+            # return html_header + html_body + html_footer
         if rasterize == "True":
             rasterize = True
         else:

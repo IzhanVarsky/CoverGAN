@@ -1,20 +1,12 @@
 # CoverGAN
 
 <div align="center">
-  <img src="/covergan/examples/gen1_capt1/Burak%20Yeter%20-%20Body%20Talks.png" alt="img1" width="256"/>
-  <img src="/covergan/examples/gen1_capt1/Imagine%20Dragons%20-%20Follow%20You.png" alt="img2" width="256"/>
+  <img src="/covergan/examples/gen1_capt1/Boney%20M.%20-%20Rasputin.PNG" alt="img1" width="256"/>
+  <img src="/covergan/examples/gen1_capt1/Charlie%20Puth%20-%20Girlfriend.PNG" alt="img2" width="256"/>
   <img src="/covergan/examples/gen2_capt2/BOYO%20-%20Dance%20Alone.png" alt="img3" width="256"/>
 </div>
 
-[//]: # (  <img src="/covergan/examples/gen1_capt2/Imagine%20Dragons%20-%20Believer.png" alt="img1" width="256"/>)
-
-[//]: # (  <img src="/covergan/examples/gen2_capt2/Nawms%20-%20Sugar%20Cane%20&#40;feat.%20Emilia%20Ali&#41;.png" alt="img2" width="256"/>)
-
-[//]: # (![img1]&#40;/covergan/examples/gen2_capt2/BOYO%20-%20Dance%20Alone.png&#41;)
-
-[//]: # (![img2]&#40;/covergan/examples/gen2_capt2/Nawms%20-%20Sugar%20Cane%20&#40;feat.%20Emilia%20Ali&#41;.png&#41;)
-
-CoverGAN is a set of tools and machine learning models designed to generate good-looking album covers based on users'
+**CoverGAN** is a set of tools and machine learning models designed to generate good-looking album covers based on users'
 audio tracks and emotions. Resulting covers are generated in vector graphics format (SVG).
 
 Available emotions:

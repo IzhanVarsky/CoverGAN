@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+<style>@import url('https://fonts.googleapis.com/css?family=Titillium Web');
+</style>
+    <defs></defs>
+    <rect width="512" height="512" fill="#FC7C87" fill-opacity="1"></rect>
+    <path fill="#48A965" fill-opacity="0.99607843" stroke="#F5ACBB" stroke-opacity="1" stroke-width="5" stroke-linejoin="miter" d="M -155,173
+C 671,298 141,267 300,274
+C 252,196 293,211 239,296
+C 236,69 230,253 241,222
+C 242,256 -254,73 -253,394
+Z "></path>
+    <path fill="#A01007" fill-opacity="0" stroke="#ECFCF5" stroke-opacity="0.015686275" stroke-width="5" stroke-linejoin="miter" d="M 31,735
+C 72,731 680,723 630,104
+C 123,645 658,380 -155,-164
+C 510,498 -161,-182 633,90
+C 620,433 -83,-6 -125,93
+Z "></path>
+    <path fill="#941634" fill-opacity="0.078431375" stroke="#FFF8FB" stroke-opacity="0.99607843" stroke-width="3" stroke-linejoin="miter" d="M -38,-128
+C 682,-20 284,575 278,192
+C 308,249 21,254 381,55
+C 210,93 -51,280 254,410
+C -7,165 583,661 373,-63
+Z "></path>
+    <rect fill="#FFFFFF" fill-opacity="0.39215687" x="0" y="0" width="512" height="512" rx="0" ry="0"></rect>
+    <text fill="#034F48" fill-opacity="1" x="14" y="487" style="font-size:44px;font-family:Titillium Web;font-style:italic;font-stretch:normal" textLength="482" lengthAdjust="spacing" writing-mode="lr">
+        Imagine Dragons – Believer
+    </text>
+</svg>

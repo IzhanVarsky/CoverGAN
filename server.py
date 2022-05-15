@@ -48,7 +48,7 @@ html_body = \
     """
     <p>
     <form action="generate" method="post" enctype="multipart/form-data">
-        Audio file: <input type="file" name="audio_file">  <br> <br>
+        Audio file: <input type="file" name="audio_file" accept="audio/*">  <br> <br>
         Artist name: <input type="text" name="track_artist">  <br> <br>
         Track name: <input type="text" name="track_name">  <br> <br>
         Emotion: <select name="emotion">
@@ -151,7 +151,8 @@ class ApiServerController(object):
 
     @cherrypy.expose('/')
     def index(self):
-        return html_header + html_body + html_footer
+        greeting = "<h2>Welcome to CoverGAN service!</h2>\n"
+        return html_header + greeting + html_body + html_footer
 
     @cherrypy.expose
     def generate(self, audio_file=None, track_artist: str = None, track_name: str = None, emotion: str = None,

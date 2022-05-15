@@ -1,9 +1,12 @@
 # CoverGAN
 
-<img src="/covergan/examples/gen2_capt2/BOYO%20-%20Dance%20Alone.png" alt="img1" width="256"/>
-<img src="/covergan/examples/gen2_capt2/Nawms%20-%20Sugar%20Cane%20(feat.%20Emilia%20Ali).png" alt="img2" width="256"/>
+<div align="center">
+  <img src="/covergan/examples/gen2_capt2/BOYO%20-%20Dance%20Alone.png" alt="img1" width="256"/>
+  <img src="/covergan/examples/gen2_capt2/Nawms%20-%20Sugar%20Cane%20(feat.%20Emilia%20Ali).png" alt="img2" width="256"/>
+</div>
 
 [//]: # (![img1]&#40;/covergan/examples/gen2_capt2/BOYO%20-%20Dance%20Alone.png&#41;)
+
 [//]: # (![img2]&#40;/covergan/examples/gen2_capt2/Nawms%20-%20Sugar%20Cane%20&#40;feat.%20Emilia%20Ali&#41;.png&#41;)
 
 CoverGAN is a set of tools and machine learning models designed to generate good-looking album covers based on users'

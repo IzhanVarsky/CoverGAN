@@ -1,5 +1,8 @@
 # CoverGAN
 
+![img1](/covergan/examples/gen2_capt2/BOYO%20-%20Dance%20Alone.png)
+![img2](/covergan/examples/gen2_capt2/Nawms%20-%20Sugar%20Cane%20(feat.%20Emilia%20Ali).png)
+
 CoverGAN is a set of tools and machine learning models designed to generate good-looking album covers based on users'
 audio tracks and emotions. Resulting covers are generated in vector graphics format (SVG).
 
@@ -25,66 +28,51 @@ Available emotions:
 * Sweet
 * Wary
 
-CoverGAN can be run on a machine without a GPU, however, if a GPU is available, the model will use it.
+## Weights
 
-This tutorial is for Linux.
+* The pretrained weights can be downloaded
+  from [here](https://drive.google.com/file/d/1ArU0TziLBOxhphG4KBshUxPBBECErxu1/view?usp=sharing)
+* These weights should be placed into `/covergan/weights` folder
 
-## Dependencies (for local test and training)
+## Training
 
-Install PyTorch. See [https://pytorch.org/](https://pytorch.org/) for PyTorch install instructions.
-
-Install other python requirements:
-
-* `pip install -r requirements.txt`
-
-Install DiffVG:
-
-* Make sure that CMake is installed. See [https://cmake.org/install/](https://cmake.org/install/) for CMake install
-  instructions.
-* `git clone --recursive https://github.com/BachiLi/diffvg`
-* `cd diffvg && python setup.py install`
-* `cd .. && rm -rf diffvg`
+* See [this README](./covergan/README.md) for training details.
 
 ## Testing using Docker
 
+In this service two types of generator are available:
+
+* The first one creates the covers with abstract lines
+* The second one draws closed forms.
+
+It is also possible to use one of two algorithms for applying inscriptions to the cover:
+
+* The first algorithm uses the captioner model
+* The second is a deterministic algorithm which searches for a suitable location
+
+The service uses pretrained weights. See [this](README.md#Weights) section.
+
 ### Building
 
-* Specify PyTorch version to install in [`Dockerfile`](./Dockerfile) .
+* Specify PyTorch version to install in [`Dockerfile`](./Dockerfile).
 
-* Build the image:
-
-```sh
-docker build -t covergan .
-```
+* Build the image running `docker_build_covergan_service.sh` file
 
 ### Running
 
-* Run the container:
-
-With CUDA enabled:
-
-```sh
-docker run --rm --network="host" --gpus 1 covergan
-```
-
-Only CPU using:
-
-```sh
-docker run --rm --network="host" covergan
-```
+* Start the container running `docker_run_covergan_service.sh` file
 
 ### Testing
 
-Below is an example command that can be used to trigger the generation endpoint:
-
-```sh
-curl --progress-bar \
-    -F "audio_file=@/home/user/audio.flac" \
-    "http://localhost:5001/generate?track_artist=Cool%20Band&track_name=Song&emotion=joy" \
-    -o ./output.json
-```
+Go to `http://localhost:5001` in the browser and enjoy!
 
 ## Local testing
+
+### Install dependencies
+
+* Install suitable PyTorch version: `pip install torch torchvision torchaudio`
+* Install [DiffVG](https://github.com/BachiLi/diffvg)
+* Install dependencies from [this](/covergan/requirements.txt) file
 
 ### Compile ProtoSVG server
 
@@ -95,9 +83,9 @@ In [`protosvg`](./protosvg) folder:
 * `rustup component add rustfmt`
 * `cargo install --locked --path .`
 
-* Run as background process the ProtoSVG server by command `protosvg`
-
 ### Running
+
+Run as background process the ProtoSVG server by command `protosvg`
 
 In [`covergan`](./covergan) folder:
 
@@ -113,68 +101,6 @@ python3 ./eval.py \
 
 * The resulting `.svg` covers by default will be saved to [`./gen_samples`](./covergan/gen_samples) folder.
 
-## Local training
-
-Main directory is [`covergan`](./covergan).
-
-### CoverGAN network training
-
-* Put audio tracks (`.flac` or `.mp3` format) to default [`./audio`](./covergan/audio) folder.
-* Put original covers (`.jpg` format) to default [`./clean_covers`](./covergan/clean_covers) folder.
-* See this [help document](./covergan/docs/covergan_train_help.txt) for more details about specified options.
-* Run `./covergan_train.py` file with specified options.
-
-Example:
-`python3 ./covergan_train.py --emotions emotions.json`
-
-### Captioner network training
-
-* Put original covers (`.jpg` format) in [`./original_covers`](./covergan/original_covers) folder.
-* If the covers title and author name have been already saved to `data.json` file (which for each cover stores the
-  coordinates of the captures and their text color), it should be stored
-  at [`./checkpoint/caption_dataset/data.json`](./covergan/checkpoint/caption_dataset/data.json).
-* Or else put clean (with captures removed) covers (`.jpg` format) to [`./clean_covers`](./covergan/clean_covers)
-  folder.
-* See this [help document](./covergan/docs/captioner_train_help.txt) for more details about specified options.
-* Run `./captioner_train.py` file with specified options.
-
-Example:
-`python3 ./captioner_train.py --clean_covers ./clean_covers`
-
 ## Examples of generated covers
 
-See [this](./covergan/examples/tracks_with_generated_covers) folder with simple music tracks and their generated covers.
-
-## Full datasets
-
-* `https://drive.google.com/file/d/1_NKlS79y29_he9P3xTLd7SgYbOstCkmO/view?usp=sharing` (not needed for service)
-
-## For service deploying:
-
-#### Weights:
-
-* `https://drive.google.com/file/d/1ArU0TziLBOxhphG4KBshUxPBBECErxu1/view?usp=sharing`
-* these weights should be in `/covergan/weights`
-
-#### Building:
-
-* run `docker_build_covergan_service.sh`
-
-#### Running:
-
-* run `docker_run_covergan_service.sh`
-
-#### Testing:
-
-* run `test_server.sh`
-* outputs: `output[1-4].json`
-* convert json output to files: run `json_output_reader.py` script
-* find results in `out` folder
-
-#### Проблемы:
-
-* Пока не успел написать сервачную часть переноса стиля
-* Сервис выдает json, потому что я не смог понять, как его заставить выдавать html (cherrypy не моё)
-* Я не понял, как он преобразует типы, например если передавать "http://....?rasterize=False", то он строку "False"
-  видимо преобразовывает в bool как True. Я хз можно ли это сделать автоматически, не руками
-* Шрифт при растеризации может поехать (и наоборот), потому что стандарты в SVG и в Pillow разные.
+See [this](./covergan/examples) examples folder.

@@ -4,7 +4,6 @@ import argparse
 import logging
 import os
 from typing import Optional
-import cairosvg
 
 from outer.emotions import Emotion, emotion_from_str
 from service import CoverService, OverlayFilter
@@ -25,8 +24,10 @@ def filter_from_str(filter_str: str) -> Optional[OverlayFilter]:
 def main():
     parser = argparse.ArgumentParser()
     # Service config
-    parser.add_argument("--gan_weights", help="Model weights for CoverGAN",
-                        type=str, default="./weights/covergan.pt")
+    parser.add_argument("--gan1_weights", help="Model weights for CoverGAN",
+                        type=str, default="./weights/covergan_ilya.pt")
+    parser.add_argument("--gan2_weights", help="Model weights for CoverGAN",
+                        type=str, default="./weights/checkpoint_6figs_5depth_512noise.pt")
     parser.add_argument("--captioner_weights", help="Captioner weights",
                         type=str, default="./weights/captioner.pt")
     parser.add_argument("--protosvg_address", help="ProtoSVG rendering server",
@@ -43,6 +44,9 @@ def main():
                         type=str, default=None, required=True)
     parser.add_argument("--track_artist", help="Track artist", type=str, default=None, required=True)
     parser.add_argument("--track_name", help="Track name", type=str, default=None, required=True)
+    parser.add_argument("--gen_type", help="Type of generator to use (1 or 2)", type=str, default="2", required=True)
+    parser.add_argument("--captioning_type", help="Type of captioning algo to use (1 or 2)", type=str,
+                        default="2", required=True)
     # Other options
     parser.add_argument("--rasterize", help="Whether to rasterize the generated cover", default=False,
                         action="store_true")
@@ -81,13 +85,21 @@ def main():
     track_name = args.track_name
 
     # Start the service
-    service = CoverService(args.protosvg_address, args.gan_weights, args.captioner_weights, args.font_dir,
-                           log_level=logging.INFO, debug=args.debug, deterministic=args.deterministic)
+    service = CoverService(
+        args.protosvg_address,
+        args.gan1_weights,
+        args.captioner_weights,
+        args.gan2_weights,
+        args.font_dir,
+        log_level=logging.INFO,
+        debug=args.debug, deterministic=args.deterministic
+    )
 
     # Generate covers
     result = service.generate(
         audio_file_name, track_artist, track_name, emotions,
-        num_samples=args.num_samples, apply_filters=args.filter, rasterize=args.rasterize, watermark=args.watermark
+        num_samples=args.num_samples, generatorType=args.gen_type, use_captioner=args.captioning_type,
+        apply_filters=args.filter, rasterize=args.rasterize, watermark=args.watermark
     )
 
     basename = os.path.basename(audio_file_name)
@@ -98,9 +110,8 @@ def main():
             png_cover_filename = f"{output_dir}/{basename}-{i + 1}.png"
             with open(svg_cover_filename, 'w') as f:
                 f.write(svg_xml)
-            cairosvg.svg2png(url=svg_cover_filename, write_to=png_cover_filename)
-            # with open(png_cover_filename, 'wb') as f:
-            #     f.write(png_data)
+            with open(png_cover_filename, 'wb') as f:
+                f.write(png_data)
         else:
             svg_cover_filename = f"{output_dir}/{basename}-{i + 1}.svg"
             with open(svg_cover_filename, 'w') as f:

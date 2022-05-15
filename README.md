@@ -31,6 +31,8 @@ Available emotions:
 * Sweet
 * Wary
 
+The service is available on http://109.188.135.85:5001.
+
 ## Weights
 
 * The pretrained weights can be downloaded

@@ -57,8 +57,8 @@ The full dataset contains of:
 * Fonts
 * Marked up emotions
 * Marked up rectangles for captioner model training
-  The dataset can be downloaded
-  from [here](https://drive.google.com/file/d/1_NKlS79y29_he9P3xTLd7SgYbOstCkmO/view?usp=sharing)
+
+The dataset can be downloaded from [here](https://drive.google.com/file/d/1_NKlS79y29_he9P3xTLd7SgYbOstCkmO/view?usp=sharing)
 
 ## Training using Docker with GPU
 

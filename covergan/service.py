@@ -7,7 +7,6 @@ import numpy as np
 from PIL import ImageDraw
 
 from captions.models.captioner import Captioner
-from fonts_cfg import FONTS
 from outer.audio_extractor import audio_to_embedding
 from outer.emotions import Emotion, emotions_one_hot
 from outer.models.generator import Generator
@@ -219,15 +218,11 @@ class CoverService:
                     track_name_color
                 )
 
-                # Font properties
-                artist_font_family = FONTS[0] if self.deterministic_ else random.choice(FONTS)
-                name_font_family = FONTS[0] if self.deterministic_ else random.choice(FONTS)
-
                 add_caption(
                     psvg_cover, self.font_dir_,
-                    track_artist, artist_name_pos, artist_name_color, artist_font_family,
-                    track_name, track_name_pos, track_name_color, name_font_family,
-                    debug=self.debug_
+                    track_artist, artist_name_pos, artist_name_color,
+                    track_name, track_name_pos, track_name_color,
+                    debug=self.debug_, deterministic=self.deterministic_
                 )
         else:
             logger.info("Using deterministic caption algo...")

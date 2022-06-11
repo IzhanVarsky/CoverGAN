@@ -36,21 +36,28 @@ def svglib_rendering_from_file(svg_filename):
 
 
 class SVGNode:
-    pass
+    def __str__(self):
+        raise Exception("__str__() not implemented")
+
+    def to_obj(self):
+        raise Exception("to_obj() not implemented")
 
 
 class TextNode(SVGNode):
     def __init__(self, text=""):
         self.text = text
 
-    def __str__(self):
-        return self.escape_text()
-
     def replace_text(self, new_text):
         self.text = new_text
 
     def escape_text(self):
         return html.escape(self.text)
+
+    def __str__(self):
+        return self.escape_text()
+
+    def to_obj(self):
+        return {"#text": str(self)}
 
 
 class BasicSVGTag(SVGNode):
@@ -91,6 +98,10 @@ class OpenSVGTag(BasicSVGTag):
     def __str__(self):
         return f"<{self.tag_with_attrs()}>{self.inner_nodes_to_string()}</{self.tag_name}>"
 
+    def to_obj(self):
+        return {self.tag_name: {"attrs": [self.attrs],
+                                "children": [node.to_obj() for node in self.inner_nodes]}}
+
 
 class CloseSVGTag(BasicSVGTag):
     def __init__(self, tag_name: str, attrs_dict=None):
@@ -98,6 +109,9 @@ class CloseSVGTag(BasicSVGTag):
 
     def __str__(self):
         return f"<{self.tag_with_attrs()}/>"
+
+    def to_obj(self):
+        return {self.tag_name: {"attrs": [self.attrs]}}
 
 
 class RawTextTag(OpenSVGTag):
@@ -132,7 +146,16 @@ class FontImporter(StyleTag):
         text = self.get_text()
         if text == "":
             return ""
-        return f"<{self.tag_with_attrs()}>{text}</{self.tag_name}>"
+        node = TextNode(text)
+        return f"<{self.tag_with_attrs()}>{node}</{self.tag_name}>"
+
+    def to_obj(self):
+        text = self.get_text()
+        if text == "":
+            return None
+        node = TextNode(text)
+        return {self.tag_name: {"attrs": [self.attrs],
+                                "children": [node.to_obj()]}}
 
 
 class RectTag(CloseSVGTag):

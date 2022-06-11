@@ -270,8 +270,36 @@ def make_text_node(image: SVGContainer,
 
 
 def add_caption(psvg_cover: SVGContainer, font_dir: str,
-                track_artist: str, artist_name_pos: BBox, artist_name_color: tuple, artist_font_family: str,
-                track_name: str, track_name_pos: BBox, track_name_color: tuple, name_font_family: str, debug: bool):
+                track_artist: str, artist_name_pos: BBox, artist_name_color: tuple,
+                track_name: str, track_name_pos: BBox, track_name_color: tuple,
+                debug: bool, deterministic: bool = False):
+    # Open fonts available from https://fonts.google.com
+    FONTS = [
+        "Allerta Stencil",
+        "Balsamiq Sans",
+        "Cabin",
+        "Caveat",
+        "Comfortaa",
+        "Fira Sans",
+        "Lobster",
+        "Montserrat",
+        "Neucha",
+        "Nunito",
+        "Open Sans",
+        "Oxanium",
+        "Playfair Display",
+        "Press Start 2P",
+        "PT Serif",
+        "Reggae One",
+        "Roboto",
+        "Schoolbell",
+        "Special Elite",
+        "Titillium Web",
+        "Zilla Slab",
+    ]
+    artist_font_family = FONTS[0] if deterministic else random.choice(FONTS)
+    name_font_family = FONTS[0] if deterministic else random.choice(FONTS)
+
     if artist_name_pos.overlaps(track_name_pos):
         merged_pos = merge_bboxes([artist_name_pos, track_name_pos])
         merged_color = artist_name_color

@@ -183,14 +183,10 @@ def run_track(audio_file_name, track_artist, track_name, emotions=None,
                 track_name_color
             )
 
-            # Font properties
-            artist_font_family = random.choice(FONTS)
-            name_font_family = random.choice(FONTS)
-
             add_caption(
                 psvg_cover, font_dir,
-                track_artist, artist_name_pos, artist_name_color, artist_font_family,
-                track_name, track_name_pos, track_name_color, name_font_family,
+                track_artist, artist_name_pos, artist_name_color,
+                track_name, track_name_pos, track_name_color,
                 debug=False
             )
     else:

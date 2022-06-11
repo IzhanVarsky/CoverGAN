@@ -7,6 +7,7 @@ import os
 import torch
 from torch.utils.data.dataloader import DataLoader
 
+from colorer.test_model import get_palette_predictor
 from outer.dataset import MusicDataset
 
 from outer.train import make_gan_models, train
@@ -47,7 +48,13 @@ def get_test_data(checkpoint_dir: str, test_set_dir: str, test_emotion_file: str
     return test_dataloader
 
 
-def demo_samples(gen, dataloader: DataLoader, z_dim: int, disc_slices: int, device: torch.device):
+def demo_samples(gen, dataloader: DataLoader, z_dim: int, disc_slices: int, device: torch.device,
+                 palette_generator=None):
+    def generate(z, audio_embedding_disc, emotions):
+        if palette_generator is None:
+            return gen(z, audio_embedding_disc, emotions)
+        return gen(z, audio_embedding_disc, emotions, palette_generator=palette_generator)
+
     gen.eval()
 
     sample_count = 5  # max covers to draw
@@ -66,7 +73,7 @@ def demo_samples(gen, dataloader: DataLoader, z_dim: int, disc_slices: int, devi
             real_cover_tensor = real_cover_tensor[:sample_count].to(device)
 
             noise = get_noise(sample_count, z_dim, device=device)
-            fake_cover_tensor = gen(noise, audio_embedding, emotions)
+            fake_cover_tensor = generate(noise, audio_embedding, emotions)
 
             plot_real_fake_covers(real_cover_tensor, fake_cover_tensor)
             break  # we only want one batch
@@ -113,7 +120,8 @@ def main():
     parser.add_argument("--test_emotions", help="File with emotion markup for test dataset", type=str, default=None)
     parser.add_argument("--checkpoint_root", help="Checkpoint location", type=str, default="checkpoint")
     parser.add_argument("--augment_dataset", help="Whether to augment the dataset", default=False, action="store_true")
-    parser.add_argument("--lr", help="Learning rate", type=float, default=0.0005)
+    parser.add_argument("--gen_lr", help="Generator learning rate", type=float, default=0.0005)
+    parser.add_argument("--disc_lr", help="Discriminator learning rate", type=float, default=0.0005)
     parser.add_argument("--disc_repeats", help="Discriminator runs per iteration", type=int, default=5)
     parser.add_argument("--epochs", help="Number of epochs to train for", type=int, default=8000)
     parser.add_argument("--batch_size", help="Batch size", type=int, default=64)
@@ -181,7 +189,10 @@ def main():
         disc_slices=disc_slices,
         device=device
     )
-    demo_samples(gen, dataloader, z_dim, disc_slices, device)
+    palette_generator = get_palette_predictor(device)
+
+    demo_samples(gen, dataloader, z_dim, disc_slices, device, palette_generator=palette_generator)
+
     train(dataloader, test_dataloader, gen, disc, device, {
         # Common
         "display_steps": args.display_steps,
@@ -192,13 +203,15 @@ def main():
         "checkpoint_root": file_in_folder(args.train_dir, args.checkpoint_root),
         # (W)GAN-specific
         "n_epochs": args.epochs,
-        "lr": args.lr,
+        "gen_lr": args.gen_lr,
+        "disc_lr": args.disc_lr,
         "disc_repeats": args.disc_repeats,
         "plot_grad": args.plot_grad,
-    })
+    }, cgan_out_name="cgan_6figs_32noise_separated_palette_tanh_betas", palette_generator=palette_generator,
+          USE_SHUFFLING=True)
 
     logger.info("--- CoverGAN sample demo ---")
-    demo_samples(gen, dataloader, z_dim, disc_slices, device)
+    demo_samples(gen, dataloader, z_dim, disc_slices, device, palette_generator=palette_generator)
 
 
 if __name__ == '__main__':

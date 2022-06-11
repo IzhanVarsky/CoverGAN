@@ -5,13 +5,13 @@ from enum import Enum
 from io import BytesIO
 from typing import Tuple, Optional
 
-import protosvg.protosvg_pb2 as psvg
 import torch
 from PIL import Image, ImageFont
 from kornia.color import rgb_to_rgba
 from torchvision.transforms.functional import to_tensor
 
-from protosvg.client import color_to_int
+from outer.SVGContainer import *
+from outer.represent import color_to_rgb_attr
 from utils.bboxes import BBox, merge_bboxes
 from utils.color_contrast import sufficient_contrast, contrast
 from utils.color_extractor import extract_primary_color
@@ -28,62 +28,47 @@ class OverlayFilter(Enum):
     WHITEN = 4
 
 
-def add_filter(image: psvg.ProtoSVG, f: OverlayFilter):
-    overlay = psvg.Square()
-    overlay.start.x = 0
-    overlay.start.y = 0
-    overlay.width = image.width
-    s = image.shapes.add()
-    s.square.CopyFrom(overlay)
+def add_filter(image: SVGContainer, f: OverlayFilter):
+    rect = RectTag(attrs_dict={"x": 0, "y": 0,
+                               "width": image.width,
+                               "height": image.height,
+                               })
+    image.add_inner_node(rect)
 
     if f == OverlayFilter.DIM:
-        s.color.rgba = color_to_int(r=0, g=0, b=0, a=100)
+        rect.add_attrs({"fill": color_to_rgb_attr([0, 0, 0]), "fill-opacity": 100 / 255.0})
     elif f == OverlayFilter.VINTAGE:
-        s.color.rgba = color_to_int(r=255, g=244, b=226, a=100)
+        rect.add_attrs({"fill": color_to_rgb_attr([255, 244, 226]), "fill-opacity": 100 / 255.0})
     elif f == OverlayFilter.SEPIA:
-        s.color.rgba = color_to_int(r=173, g=129, b=66, a=100)
+        rect.add_attrs({"fill": color_to_rgb_attr([173, 129, 66]), "fill-opacity": 100 / 255.0})
     elif f == OverlayFilter.WHITEN:
-        s.color.rgba = color_to_int(r=255, g=255, b=255, a=100)
+        rect.add_attrs({"fill": color_to_rgb_attr([255, 255, 255]), "fill-opacity": 100 / 255.0})
     elif f == OverlayFilter.VIGNETTE:
-        gradient = psvg.RadialGradient()
-
-        # Center
-        stop = gradient.base.stops.add()
-        stop.offset = 0
-        stop.color.rgba = color_to_int(r=0, g=0, b=0, a=0)
-        # Circular start
-        stop = gradient.base.stops.add()
-        stop.offset = 0.7
-        stop.color.rgba = color_to_int(r=0, g=0, b=0, a=0)
-        # End
-        stop = gradient.base.stops.add()
-        stop.offset = 1.0
-        stop.color.rgba = color_to_int(r=0, g=0, b=0, a=153)
-
-        gradient.end.x = image.width // 2
-        gradient.end.y = image.height // 2
-        gradient.endRadius = math.ceil(image.width / math.sqrt(2))
-        s.radialGradient.CopyFrom(gradient)
+        radial_gradient = RadialGradientTag()
+        radial_gradient.add_stop(0, color_to_rgb_attr([0, 0, 0]), 0)
+        radial_gradient.add_stop(0.7, color_to_rgb_attr([0, 0, 0]), 0)
+        radial_gradient.add_stop(1, color_to_rgb_attr([0, 0, 0]), 153 / 255.0)
+        radial_gradient.add_attrs({"cx": image.width // 2,
+                                   "cy": image.height // 2,
+                                   "r": math.ceil(image.width / math.sqrt(2)),
+                                   "gradientUnits": "userSpaceOnUse",
+                                   "spreadMethod": "pad"})
+        image.bind_tags_with_id(rect, radial_gradient, "fill")
+        image.insert_inner_node(1, radial_gradient)
 
 
-def add_watermark(image: psvg.ProtoSVG):
-    label = psvg.Label()
-
-    label.font.size = 40
-    label.font.family = "Roboto"
-    label.font.weight = 700
-
-    label.text = SERVICE_NAME
-    label.start.x = image.width - 300
-    label.start.y = image.height - 30
-
-    s = image.shapes.add()
-    s.label.CopyFrom(label)
-    s.color.rgba = color_to_int(r=255, g=255, b=255, a=100)
-
-
-def rgb_tuple_to_int(rgb: Tuple[int, int, int]) -> int:
-    return color_to_int(*rgb, a=255)
+def add_watermark(image: SVGContainer):
+    text_tag = TextTag(SERVICE_NAME, attrs_dict={"x": image.width - 300,
+                                                 "y": image.height - 30,
+                                                 "font-family": "Roboto",
+                                                 "font-weight": 700,
+                                                 "font-size": 40,
+                                                 "writing-mode": "lr",
+                                                 "fill": color_to_rgb_attr([255, 255, 255]),
+                                                 "fill-opacity": 100 / 255.0,
+                                                 })
+    image.add_inner_node(text_tag)
+    image.font_importer.add_font("Roboto")
 
 
 def pos_tensor_to_bbox(t: torch.Tensor) -> BBox:
@@ -135,59 +120,71 @@ def get_font_filename(font_dir: str, font_family: str, bold: bool):
         return regular_filename
 
 
-def add_ready_text_node(image: psvg.ProtoSVG,
+def add_ready_text_node(image: SVGContainer,
                         text: str,
                         text_color: tuple,
                         font: ImageFont.FreeTypeFont,
-                        xy, rt):
-    label = psvg.Label()
+                        xy, rt,
+                        debug=False):
     x, y = xy
     r, t = rt
-    label.textLength = r - x
-    label.font.size = font.size
+    textLength = r - x
     font_family = font.font.family
     font_style = font.font.style
+    end_font_stretch = "normal"
+    end_font_style = "normal"
     if "SemiCondensed" in font_family:
-        label.font.stretch = label.font.SEMI_CONDENSED
+        end_font_stretch = "semi-condensed"
         font_family = font_family.replace("SemiCondensed", "").strip()
     elif "Condensed" in font_family:
-        label.font.stretch = label.font.CONDENSED
+        end_font_stretch = "condensed"
         font_family = font_family.replace("Condensed", "").strip()
     if "Italic" in font_style:
-        label.font.style = label.font.ITALIC
+        end_font_style = "italic"
         font_style = font_style.replace("Italic", "").strip()
+    font_weight = 400
     if font_style == "Thin":
-        label.font.weight = 100
+        font_weight = 100
     elif font_style == "ExtraLight":
-        label.font.weight = 200
+        font_weight = 200
     elif font_style == "Light":
-        label.font.weight = 300
+        font_weight = 300
     elif font_style == "Regular":
-        label.font.weight = 400
+        font_weight = 400
     elif font_style == "Medium":
-        label.font.weight = 500
+        font_weight = 500
     elif font_style == "SemiBold":
-        label.font.weight = 600
+        font_weight = 600
     elif font_style == "Bold":
-        label.font.weight = 700
+        font_weight = 700
     elif font_style == "ExtraBold":
-        label.font.weight = 800
+        font_weight = 800
     elif font_style == "Black":
-        label.font.weight = 900
+        font_weight = 900
     elif font.font.style != "Italic":
         print(f"Unexpected font style: `{font_style}`")
-    label.font.family = font_family
-    label.text = text
-    label.start.x, label.start.y = x, y
-    s = image.shapes.add()
-    s.label.CopyFrom(label)
-    s.color.rgba = rgb_tuple_to_int(text_color)
+    from outer.represent import color_to_rgb_attr
+    text_tag = TextTag(text, attrs_dict={"x": x, "y": y,
+                                         "font-family": font_family,
+                                         "font-weight": font_weight,
+                                         "font-stretch": end_font_stretch,
+                                         "font-size": font.size,
+                                         "textLength": textLength,
+                                         "font-style": end_font_style,
+                                         "writing-mode": "lr",
+                                         "fill": color_to_rgb_attr(text_color),
+                                         "fill-opacity": "1",
+                                         })
+    image.add_inner_node(text_tag)
+    image.font_importer.add_font(font_family)
+    if debug:
+        image.add_inner_node(CircleTag.create(2, x, y, "green"))
 
 
-def make_text_node(image: psvg.ProtoSVG,
+def make_text_node(image: SVGContainer,
                    text: str,
                    text_pos: BBox,
-                   text_color: int,
+                   text_color: tuple,
                    text_font_family: str,
                    font_dir: str,
                    debug: bool = False):
@@ -226,56 +223,55 @@ def make_text_node(image: psvg.ProtoSVG,
         # logger.warning("FIT: Failed to fit the text!")
         pass
 
-    label = psvg.Label()
-
-    label.font.size = font_size
-    label.font.family = text_font_family
-    label.font.weight = font_weight
-
-    label.text = text
-    if direction == 'ttb':
-        label.writingMode = random.choice((
-            psvg.Label.WritingMode.VERTICAL_RIGHT_LEFT,
-            psvg.Label.WritingMode.VERTICAL_LEFT_RIGHT
-        ))
+    writingMode = "tb" if direction == 'ttb' else "lr"
+    lengthAdjust = None
+    textLength = None
 
     set_text_length = bool(random.getrandbits(1))
     if set_text_length:
         if direction == 'ttb':
-            label.start.x = x
-            label.start.y = text_pos.y1
-            label.textLength = text_pos.height()
+            y = text_pos.y1
+            textLength = text_pos.height()
         else:
-            label.start.x = text_pos.x1
-            label.start.y = y
-            label.textLength = text_pos.width()
+            x = text_pos.x1
+            textLength = text_pos.width()
         adjust_glyphs = bool(random.getrandbits(1))
         if adjust_glyphs:
-            label.lengthAdjust = psvg.Label.LengthAdjust.SPACING_AND_GLYPHS
-    else:
-        label.start.x = x
-        label.start.y = y
+            lengthAdjust = "spacingAndGlyphs"
 
-    s = image.shapes.add()
-    s.label.CopyFrom(label)
-    s.color.rgba = text_color
+    attrs_dict = {"x": x, "y": y,
+                  "font-family": text_font_family,
+                  "font-weight": font_weight,
+                  "font-size": font_size,
+                  "writing-mode": writingMode,
+                  "fill": color_to_rgb_attr(text_color),
+                  "fill-opacity": "1",
+                  }
+    if lengthAdjust is not None:
+        attrs_dict["lengthAdjust"] = lengthAdjust
+    if textLength is not None:
+        attrs_dict["textLength"] = textLength
+
+    text_tag = TextTag(text, attrs_dict=attrs_dict)
+    image.add_inner_node(text_tag)
+    image.font_importer.add_font(text_font_family)
 
     if debug:
-        rect = psvg.Rectangle()
-        rect.start.x = text_pos.x1
-        rect.start.y = text_pos.y1
-        rect.width = text_pos.width()
-        rect.height = text_pos.height()
-        s = image.shapes.add()
-        s.rectangle.CopyFrom(rect)
-        s.color.rgba = color_to_int(r=0, g=0, b=0, a=0)
-        s.stroke.width = 2
-        s.stroke.color.rgba = color_to_int(r=255, g=255, b=255, a=255)
+        attrs_dict = {"x": text_pos.x1, "y": text_pos.y1,
+                      "width": text_pos.width(),
+                      "height": text_pos.height(),
+                      "fill": color_to_rgb_attr([0, 0, 0]),
+                      "fill-opacity": "0",
+                      "stroke": color_to_rgb_attr([255, 255, 255]),
+                      "stroke-opacity": "1",
+                      }
+        rect = RectTag(attrs_dict=attrs_dict)
+        image.add_inner_node(rect)
 
 
-def add_caption(psvg_cover: psvg.ProtoSVG, font_dir: str,
-                track_artist: str, artist_name_pos: BBox, artist_name_color: int, artist_font_family: str,
-                track_name: str, track_name_pos: BBox, track_name_color: int, name_font_family: str, debug: bool):
+def add_caption(psvg_cover: SVGContainer, font_dir: str,
+                track_artist: str, artist_name_pos: BBox, artist_name_color: tuple, artist_font_family: str,
+                track_name: str, track_name_pos: BBox, track_name_color: tuple, name_font_family: str, debug: bool):
     if artist_name_pos.overlaps(track_name_pos):
         merged_pos = merge_bboxes([artist_name_pos, track_name_pos])
         merged_color = artist_name_color
@@ -288,27 +284,58 @@ def add_caption(psvg_cover: psvg.ProtoSVG, font_dir: str,
         make_text_node(psvg_cover, track_name, track_name_pos, track_name_color, name_font_family, font_dir, debug)
 
 
-def add_font_imports_to_svg_xml(svg_xml):
-    from xml.dom import minidom
-    tree = minidom.parseString(svg_xml)
-    texts = tree.getElementsByTagName("text")
-    families = set()
-    for t in texts:
-        style = t.attributes['style'].value
-        attrs = style.split(";")
-        font_attrs = list(filter(lambda x: x.startswith("font-family"), attrs))
-        if len(font_attrs) != 0:
-            families.add(font_attrs[0].split(":")[1])
-    # print(families)
-    style_text = ""
-    for f in families:
-        style_text += f"@import url('https://fonts.googleapis.com/css?family={f}');\n"
-    split = svg_xml.split("\n")
-    split.insert(1, f"<style>{style_text}</style>")
-    return "\n".join(split)
-    # from xml.etree import ElementTree as ET
-    # root = ET.fromstring(svg_xml)
-    # style = root.makeelement('style', {})
-    # style.text = style_text
-    # root.insert(0, style)
-    # return ET.tostring(root, encoding='unicode')
+def paste_caption(svg_cont: SVGContainer,
+                  pil_img,
+                  track_artist: str,
+                  track_name: str,
+                  font_dir: str,
+                  for_svg=True):
+    from PIL import ImageDraw
+    from utils.deterministic_text_fitter import get_all_boxes_info_to_paste
+    import numpy as np
+    from utils.deterministic_text_fitter import draw_to_draw_object
+
+    draw = ImageDraw.Draw(pil_img, mode='RGB')
+    to_draw = get_all_boxes_info_to_paste(track_artist, track_name, np.asarray(pil_img), font_dir,
+                                          for_svg=for_svg)
+    for x in to_draw:
+        draw_to_draw_object(draw, x)
+        if x["type"] == "text":
+            l, t = x["text_xy_left_top"]
+            ascent = x["ascent"]
+            t += ascent - 1
+            r, b = x["text_xy_right_bottom"]
+            b -= 10
+            add_ready_text_node(svg_cont, x["word"], x["color"], x["font"], (l, b), (r, t), debug=True)
+            svg_cont.add_inner_node(CircleTag.create(2, l, b + 10, "lightgreen"))
+        elif x["type"] == "circle":
+            d = x
+            p_y, p_x = d["xy"]
+            r = d["r"]
+            descent = d["descent"]
+            ascent = d["ascent"]
+            y_t, x_l = d["text_xy_left_top"]
+            # draw_circle(draw, x_l + ascent, y_t, 1, d["color"])
+            svg_cont.add_inner_node(CircleTag.create(2, y_t, x_l, "yellow"))
+            svg_cont.add_inner_node(CircleTag.create(2, y_t, x_l + descent, "black"))
+            svg_cont.add_inner_node(CircleTag.create(2, y_t, x_l + ascent,
+                                                     color_to_rgb_attr(d["color"])))
+            svg_cont.add_inner_node(CircleTag.create(2, y_t, x_l + ascent + descent, "pink"))
+
+    def add_font_imports_to_svg_xml(svg_xml):
+        from xml.dom import minidom
+        tree = minidom.parseString(svg_xml)
+        texts = tree.getElementsByTagName("text")
+        families = set()
+        for t in texts:
+            style = t.attributes['style'].value
+            attrs = style.split(";")
+            font_attrs = list(filter(lambda x: x.startswith("font-family"), attrs))
+            if len(font_attrs) != 0:
+                families.add(font_attrs[0].split(":")[1])
+        style_text = ""
+        for f in families:
+            style_text += f"@import url('https://fonts.googleapis.com/css?family={f}');\n"
+        split = svg_xml.split("\n")
+        split.insert(1, f"<style>{style_text}</style>")
+        return "\n".join(split)

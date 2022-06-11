@@ -8,11 +8,11 @@ from torch import nn
 from outer.emotions import Emotion
 
 
-class ColorerDropout(nn.Module):
+class Colorer2(nn.Module):
     def __init__(self, z_dim: int, audio_embedding_dim: int, has_emotions: bool, num_layers: int,
                  colors_count: int = 6):
-        super(ColorerDropout, self).__init__()
-        colors_count = 3
+        super(Colorer2, self).__init__()
+        colors_count = 12
         self.colors_count = colors_count
         in_features = z_dim + audio_embedding_dim
         if has_emotions:
@@ -26,7 +26,7 @@ class ColorerDropout(nn.Module):
             out_features = in_features - feature_step
             layers += [
                 torch.nn.Linear(in_features=in_features, out_features=out_features),
-                # torch.nn.Dropout(0.2),
+                torch.nn.Dropout(0.2),
                 torch.nn.BatchNorm1d(num_features=out_features),
                 torch.nn.LeakyReLU(0.2)
             ]

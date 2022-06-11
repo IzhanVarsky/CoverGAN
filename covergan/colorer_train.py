@@ -8,20 +8,22 @@ import torch
 from torch.utils.data.dataloader import DataLoader
 
 from colorer.models.colorer import Colorer
+from colorer.models.colorer_dropout import Colorer2
 from colorer.music_palette_dataset import MusicPaletteDataset
-from colorer.train import train
 
-logger = logging.getLogger("out_main")
+logger = logging.getLogger("colorer_train")
 logger.addHandler(logging.StreamHandler())
 logger.setLevel(logging.INFO)
 
+colorer_type = Colorer
+colorer_type = Colorer2
+
 
 def get_train_data(checkpoint_dir: str, audio_dir: str, cover_dir: str, emotion_file: str,
-                   batch_size: int, augment_dataset: bool, is_for_train: bool = True) -> \
+                   batch_size: int, is_for_train: bool = True) -> \
         (DataLoader, int, (int, int, int), bool):
     dataset = MusicPaletteDataset("cgan_out_dataset", checkpoint_dir,
-                                  audio_dir, cover_dir, emotion_file,
-                                  augment_dataset, is_for_train=is_for_train)
+                                  audio_dir, cover_dir, emotion_file, is_for_train=is_for_train)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
     music_tensor, palette_tensor = dataset[0][:2]
     audio_embedding_dim = music_tensor.shape[1]
@@ -48,7 +50,6 @@ def main():
     parser.add_argument("--test_set", help="Directory with test music files", type=str, default=None)
     parser.add_argument("--test_emotions", help="File with emotion markup for test dataset", type=str, default=None)
     parser.add_argument("--checkpoint_root", help="Checkpoint location", type=str, default="checkpoint")
-    parser.add_argument("--augment_dataset", help="Whether to augment the dataset", default=False, action="store_true")
     parser.add_argument("--lr", help="Learning rate", type=float, default=0.0005)
     parser.add_argument("--disc_repeats", help="Discriminator runs per iteration", type=int, default=5)
     parser.add_argument("--epochs", help="Number of epochs to train for", type=int, default=8000)
@@ -80,7 +81,7 @@ def main():
         file_in_folder(args.train_dir, args.audio),
         file_in_folder(args.train_dir, args.covers),
         file_in_folder(args.train_dir, args.emotions),
-        args.batch_size, args.augment_dataset, is_for_train=True
+        args.batch_size, is_for_train=True
     )
 
     test_dataloader, audio_embedding_dim, img_shape, has_emotions = get_train_data(
@@ -88,18 +89,19 @@ def main():
         file_in_folder(args.train_dir, args.audio),
         file_in_folder(args.train_dir, args.covers),
         file_in_folder(args.train_dir, args.emotions),
-        args.batch_size, args.augment_dataset, is_for_train=False
+        args.batch_size, is_for_train=False
     )
 
     logger.info("--- Colorer training ---")
-    gen = Colorer(
+    gen = colorer_type(
         z_dim=z_dim,
         audio_embedding_dim=audio_embedding_dim * disc_slices,
         has_emotions=has_emotions,
         num_layers=num_gen_layers,
         colors_count=args.colors_count,
     ).to(device)
-    train(train_dataloader, gen, device, {
+    GAN_MODEL = True
+    training_params = {
         # Common
         "display_steps": args.display_steps,
         "backup_epochs": args.backup_epochs,
@@ -112,7 +114,17 @@ def main():
         "lr": args.lr,
         "disc_repeats": args.disc_repeats,
         "plot_grad": args.plot_grad,
-    }, test_dataloader)
+    }
+    if not GAN_MODEL:
+        from colorer.train import train
+        train(train_dataloader, gen, device, training_params, test_dataloader)
+    else:
+        from colorer.models.gan_colorer import ColorerDiscriminator, train
+        num_disc_layers = 2
+        disc = ColorerDiscriminator(audio_embedding_dim=audio_embedding_dim * disc_slices,
+                                    has_emotions=has_emotions,
+                                    num_layers=num_disc_layers).to(device)
+        train(train_dataloader, test_dataloader, gen, disc, device, training_params)
 
 
 if __name__ == '__main__':

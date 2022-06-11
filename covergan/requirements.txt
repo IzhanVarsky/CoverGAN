@@ -6,7 +6,7 @@ svgwrite
 svgpathtools
 
 # Audio extraction dependencies
-#essentia
+essentia
 eyed3
 mutagen
 
@@ -28,3 +28,4 @@ lyricsgenius
 svglib
 reportlab
 lxml
+wand

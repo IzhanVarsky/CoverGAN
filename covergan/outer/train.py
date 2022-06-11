@@ -7,6 +7,7 @@ from torch.utils.data.dataloader import DataLoader
 import pydiffvg
 
 from .models.my_discriminator import MyDiscriminator
+from .models.my_gen_fixed_6figs32_good import MyGeneratorFixedSixFigs32Good
 from .models.my_generator import MyGenerator
 from .models.generator import Generator
 from .models.discriminator import Discriminator
@@ -17,10 +18,12 @@ from utils.plotting import plot_losses, plot_grad_flow, plot_real_fake_covers
 from .models.my_generator_circle_paths import MyGeneratorCircled
 from .models.my_generator_fixed_figure import MyGeneratorFixedFigure
 from .models.my_generator_fixed_six_figs import MyGeneratorFixedSixFigs
+from .models.my_generator_fixed_six_figs_backup import MyGeneratorFixedSixFigs32
 from .models.my_generator_oval_paths_multi import MyGeneratorOvaledMulti
 from .models.generator_multi_shape import GeneratorMultiShape
 from .models.my_generator_fixed_multi_circle import MyGeneratorFixedMultiCircle
 from .models.my_generator_rand_figure import MyGeneratorRandFigure
+from .models.my_generator_three_figs import MyGeneratorFixedThreeFigs32
 
 logger = logging.getLogger("trainer")
 logger.addHandler(logging.StreamHandler())
@@ -33,10 +36,15 @@ logger.setLevel(logging.INFO)
 # generator_type = MyGeneratorFixedFigure
 # generator_type = MyGeneratorRandFigure
 generator_type = MyGeneratorFixedSixFigs
+generator_type = MyGeneratorFixedSixFigs32
+generator_type = MyGeneratorFixedThreeFigs32
+generator_type = MyGeneratorFixedSixFigs32Good
 # generator_type = MyGeneratorOvaledMulti
 # generator_type = GeneratorMultiShape
 
 discriminator_type = Discriminator
+
+
 # discriminator_type = MyDiscriminator
 
 def make_gan_models(z_dim: int, audio_embedding_dim: int, img_shape: (int, int, int), has_emotions: bool,
@@ -99,14 +107,27 @@ def mismatching_permute(t: torch.Tensor) -> torch.Tensor:
 
 def train(dataloader: DataLoader, test_dataloader: DataLoader,
           gen: Generator, disc: Discriminator,
-          device: torch.device, training_params: dict):
+          device: torch.device, training_params: dict,
+          cgan_out_name='cgan_out',
+          palette_generator=None,
+          USE_SHUFFLING=False):
+    def generate(z, audio_embedding_disc, emotions):
+        if palette_generator is None:
+            return gen(z, audio_embedding_disc, emotions)
+        return gen(z, audio_embedding_disc, emotions, palette_generator=palette_generator)
+
     logger.info(f'PyDiffVG uses GPU: {pydiffvg.get_use_gpu()}')
     logger.info(gen)
     logger.info(disc)
 
     n_epochs = training_params["n_epochs"]
     disc_repeats = training_params["disc_repeats"]
-    lr = training_params["lr"]
+
+    if "lr" in training_params:
+        disc_lr = gen_lr = training_params["lr"]
+    else:
+        gen_lr = training_params["gen_lr"]
+        disc_lr = training_params["disc_lr"]
     z_dim = training_params["z_dim"]
     disc_slices = training_params["disc_slices"]
     checkpoint_root = training_params["checkpoint_root"]
@@ -116,10 +137,9 @@ def train(dataloader: DataLoader, test_dataloader: DataLoader,
     plot_grad = training_params["plot_grad"]
     c_lambda = 10
 
-    gen_opt = torch.optim.Adam(gen.parameters(), lr=lr)
-    disc_opt = torch.optim.Adam(disc.parameters(), lr=lr)
+    gen_opt = torch.optim.Adam(gen.parameters(), lr=gen_lr, betas=(0.5, 0.9))
+    disc_opt = torch.optim.Adam(disc.parameters(), lr=disc_lr, betas=(0.5, 0.9))
 
-    cgan_out_name = 'cgan_out'
     print("Trying to load checkpoint.")
     epochs_done = load_checkpoint(checkpoint_root, cgan_out_name, [gen, disc, gen_opt, disc_opt])
     if epochs_done:
@@ -154,11 +174,11 @@ def train(dataloader: DataLoader, test_dataloader: DataLoader,
 
                 if should_detach:
                     with torch.no_grad():
-                        fake_covers = gen(z, audio_embedding_disc, emotions)
+                        fake_covers = generate(z, audio_embedding_disc, emotions)
                         fig_params = None
                 else:
                     # fake_covers, fig_params = gen(z, audio_embedding_disc, emotions, return_figure_params=True)
-                    fake_covers = gen(z, audio_embedding_disc, emotions)
+                    fake_covers = generate(z, audio_embedding_disc, emotions)
                     fig_params = None
                 # Make sure that enough shapes were generated
                 assert len(fake_covers) == len(real_cover_tensor)
@@ -193,21 +213,22 @@ def train(dataloader: DataLoader, test_dataloader: DataLoader,
             # Update optimizer
             disc_opt.step()
 
-            # ### Update discriminator with matching and shuffled cover-embedding pairs ###
-            disc_opt.zero_grad()
+            if USE_SHUFFLING:
+                # ### Update discriminator with matching and shuffled cover-embedding pairs ###
+                disc_opt.zero_grad()
 
-            disc_real_pred = disc(real_cover_tensor, audio_embedding_disc, emotions)
-            disc_shuffle_pred = disc(shuffle_cover_tensor, audio_embedding_disc, emotions)
-            disc_loss = disc_shuffle_pred.mean() - disc_real_pred.mean()
+                disc_real_pred = disc(real_cover_tensor, audio_embedding_disc, emotions)
+                disc_shuffle_pred = disc(shuffle_cover_tensor, audio_embedding_disc, emotions)
+                disc_loss = disc_shuffle_pred.mean() - disc_real_pred.mean()
 
-            mean_shuffle_disc_loss += disc_loss.item() / disc_repeats
+                mean_shuffle_disc_loss += disc_loss.item() / disc_repeats
 
-            # Update gradients
-            disc_loss.backward()
-            if plot_grad:
-                plot_grad_flow(disc.named_parameters(), "discriminator (shuffled pairs)", epoch=epoch,
-                               cur_step=cur_step)
-            disc_opt.step()
+                # Update gradients
+                disc_loss.backward()
+                if plot_grad:
+                    plot_grad_flow(disc.named_parameters(), "discriminator (shuffled pairs)", epoch=epoch,
+                                   cur_step=cur_step)
+                disc_opt.step()
 
             if disc_repeat_cnt == disc_repeats:
                 # Keep track of the average discriminator loss
@@ -276,7 +297,7 @@ def train(dataloader: DataLoader, test_dataloader: DataLoader,
 
                 noise = get_noise(cur_batch_size, z_dim, device=device)
 
-                fake_cover_tensor = gen(noise, audio_embedding_disc, emotions)
+                fake_cover_tensor = generate(noise, audio_embedding_disc, emotions)
                 mean_val_pred += disc(fake_cover_tensor, audio_embedding_disc, emotions).mean().item()
             mean_val_pred /= len(test_dataloader)
             val_metrics.append(mean_val_pred)

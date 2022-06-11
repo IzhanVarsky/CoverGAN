@@ -3,31 +3,29 @@ from typing import *
 from torch import nn
 
 from colorer.test_model import get_palette_predictor
-from ..colors_tools import palette_to_triad_palette
+from .generator_utils import colorize
 from ..emotions import Emotion
 from ..represent import *
 from ..svg_tools.svg_tools import *
 
 
-class MyGeneratorFixedSixFigs(nn.Module):
+class MyGeneratorFixedThreeFigs32(nn.Module):
     def __init__(self, z_dim: int, audio_embedding_dim: int, has_emotions: bool, num_layers: int, canvas_size: int,
                  path_count: int, path_segment_count: int, max_stroke_width: float):
-        super(MyGeneratorFixedSixFigs, self).__init__()
+        super(MyGeneratorFixedThreeFigs32, self).__init__()
         self.figs_config = [
             init_func_types_config[InitFuncType.RECT],
-            init_func_types_config[InitFuncType.RECT],
-            init_func_types_config[InitFuncType.TRIANGLE],
-            init_func_types_config[InitFuncType.TRIANGLE],
             init_func_types_config[InitFuncType.TRIANGLE],
             init_func_types_config[InitFuncType.PENTAGON],
         ]
         path_count = len(self.figs_config)
-        self.path_depth = 5
-        self.radius_coef = 0.35
+        self.path_depth = 3
+        self.radius_coef = 0.4
         self.deform_coef = 0.15
 
+        self.USE_ATTN = False
         self.NEED_STROKE = False
-        self.USE_PALETTE_PREDICTOR = False
+        self.USE_PALETTE_PREDICTOR = True
         if self.USE_PALETTE_PREDICTOR:
             self.palette_predictor = get_palette_predictor()
             self.palette_predictor.eval()
@@ -52,10 +50,10 @@ class MyGeneratorFixedSixFigs(nn.Module):
             for ind, conf in enumerate(self.figs_config)
         ]
 
-        self.addable_count = 0
+        addable_count = 0
         if self.NEED_STROKE:
             self.stroke_width_count = 1
-            self.addable_count += self.stroke_width_count
+            addable_count += self.stroke_width_count
         if self.USE_PALETTE_PREDICTOR:
             # 1 = A (alpha)
             self.fill_color = 1
@@ -64,46 +62,46 @@ class MyGeneratorFixedSixFigs(nn.Module):
             # 4 = RGBA
             self.fill_color = 4
             self.stroke_color = 4 if self.NEED_STROKE else 0
-        self.addable_count += self.fill_color + self.stroke_color
+        addable_count += self.fill_color + self.stroke_color
         self.out_dim = self.background_color_count + sum(self.all_points_count_for_each_fig) \
-                       + len(self.all_points_count_for_each_fig) * self.addable_count
+                       + len(self.all_points_count_for_each_fig) * addable_count
 
-        # out_features = self.out_dim
-        # feature_step = (in_features - out_features) // num_layers
-        # layers = []
-        # for i in range(num_layers - 1):
-        #     out_features = in_features - feature_step
-        #     layers += [
-        #         torch.nn.Linear(in_features=in_features, out_features=out_features),
-        #         torch.nn.BatchNorm1d(num_features=out_features),
-        #         torch.nn.LeakyReLU(0.2)
-        #     ]
-        #     in_features = out_features
-        # layers += [
-        #     torch.nn.Linear(in_features=in_features, out_features=self.out_dim),
-        #     torch.nn.Sigmoid()
-        # ]
-        # my_layers = layers
-
-        my_layers = [
-            torch.nn.Linear(in_features=in_features, out_features=512),
-            torch.nn.BatchNorm1d(num_features=512),
-            torch.nn.LeakyReLU(0.2),
-            torch.nn.Linear(in_features=512, out_features=256),
-            torch.nn.BatchNorm1d(num_features=256),
-            torch.nn.LeakyReLU(0.2),
-            torch.nn.Linear(in_features=256, out_features=64),
-            torch.nn.BatchNorm1d(num_features=64),
-            torch.nn.LeakyReLU(0.2),
-            torch.nn.Linear(in_features=64, out_features=16),
-            torch.nn.BatchNorm1d(num_features=16),
-            torch.nn.LeakyReLU(0.2),
-            torch.nn.Linear(in_features=16, out_features=128),
-            torch.nn.BatchNorm1d(num_features=128),
-            torch.nn.LeakyReLU(0.2),
-            torch.nn.Linear(in_features=128, out_features=self.out_dim),
+        out_features = self.out_dim
+        feature_step = (in_features - out_features) // num_layers
+        layers = []
+        for i in range(num_layers - 1):
+            out_features = in_features - feature_step
+            layers += [
+                torch.nn.Linear(in_features=in_features, out_features=out_features),
+                torch.nn.BatchNorm1d(num_features=out_features),
+                torch.nn.LeakyReLU(0.2)
+            ]
+            in_features = out_features
+        layers += [
+            torch.nn.Linear(in_features=in_features, out_features=self.out_dim),
             torch.nn.Sigmoid()
         ]
+        my_layers = layers
+
+        # my_layers = [
+        #     torch.nn.Linear(in_features=in_features, out_features=512),
+        #     torch.nn.BatchNorm1d(num_features=512),
+        #     torch.nn.LeakyReLU(0.2),
+        #     torch.nn.Linear(in_features=512, out_features=256),
+        #     torch.nn.BatchNorm1d(num_features=256),
+        #     torch.nn.LeakyReLU(0.2),
+        #     torch.nn.Linear(in_features=256, out_features=64),
+        #     torch.nn.BatchNorm1d(num_features=64),
+        #     torch.nn.LeakyReLU(0.2),
+        #     torch.nn.Linear(in_features=64, out_features=16),
+        #     torch.nn.BatchNorm1d(num_features=16),
+        #     torch.nn.LeakyReLU(0.2),
+        #     torch.nn.Linear(in_features=16, out_features=128),
+        #     torch.nn.BatchNorm1d(num_features=128),
+        #     torch.nn.LeakyReLU(0.2),
+        #     torch.nn.Linear(in_features=128, out_features=self.out_dim),
+        #     torch.nn.Sigmoid()
+        # ]
         # my_layers = [
         #     torch.nn.Linear(in_features=in_features, out_features=512),
         #     torch.nn.BatchNorm1d(num_features=512),
@@ -115,7 +113,9 @@ class MyGeneratorFixedSixFigs(nn.Module):
         #     torch.nn.Linear(in_features=in_features, out_features=self.out_dim),
         #     torch.nn.Sigmoid()
         # ]
-        self.trans = nn.TransformerEncoderLayer(d_model=self.no_random_in_features, nhead=1)
+        if self.USE_ATTN:
+            self.trans = nn.TransformerEncoderLayer(d_model=self.no_random_in_features, nhead=1)
+
         self.model_ = torch.nn.Sequential(*my_layers)
         # self.transformer_block = TransformerBlock(1, 2, False)
         # self.attn_decoder = AttnDecoderRNN(in_features, self.out_dim)
@@ -134,29 +134,17 @@ class MyGeneratorFixedSixFigs(nn.Module):
     def my_mega_forward(self, noise: torch.Tensor, audio_embedding: torch.Tensor,
                         emotions: Optional[torch.Tensor], return_psvg=False, return_diffvg_svg_params=False,
                         use_triad_coloring=False):
-        def get_color_xxx(tens2, arr: np.array):
-            nonlocal color_ind
-            nonlocal b_idx
-            # samp = random_sample(arr, size)
-            samp = arr[b_idx][color_ind % len(arr[0])]
-            tens = torch.from_numpy(samp).to(noise.device)
-            color_ind += 1
-            if tens2 is not None:
-                return torch.cat((tens, tens2), dim=0)
-            return tens
-
         if self.USE_PALETTE_PREDICTOR:
-            fwd = self.palette_predictor(noise[:, :32], audio_embedding, emotions).detach().cpu().numpy()
+            fwd = self.palette_predictor(noise[:, :32], audio_embedding, emotions)
             predicted_palette = fwd.reshape(fwd.shape[0], -1, 3)
-            if use_triad_coloring:
-                predicted_palette = palette_to_triad_palette(predicted_palette)
 
         if emotions is not None:
             no_random_inp = torch.cat((audio_embedding, emotions), dim=1)
         else:
             no_random_inp = audio_embedding
 
-        no_random_inp = self.trans(torch.unsqueeze(no_random_inp, 0))[0]
+        if self.USE_ATTN:
+            no_random_inp = self.trans(torch.unsqueeze(no_random_inp, 0))[0]
         inp = torch.cat((noise, no_random_inp), dim=1)
         all_shape_params = self.model_(inp)
         assert not torch.any(torch.isnan(all_shape_params))
@@ -166,13 +154,10 @@ class MyGeneratorFixedSixFigs(nn.Module):
         result = []
         result_svg_params = []
         for b_idx, shape_params in enumerate(all_shape_params):
-            color_ind = 0
             index = 0
 
             inc = self.background_color_count
-            if self.USE_PALETTE_PREDICTOR:
-                background_color = get_color_xxx(None, predicted_palette)
-            else:
+            if not self.USE_PALETTE_PREDICTOR:
                 background_color = shape_params[index: index + inc]
                 index += inc
 
@@ -204,10 +189,7 @@ class MyGeneratorFixedSixFigs(nn.Module):
                 path["points"] = deformated_closed_path.view(-1, 2)
 
                 inc = self.fill_color
-                if self.USE_PALETTE_PREDICTOR:
-                    path["fill_color"] = get_color_xxx(shape_params[index: index + inc], predicted_palette)
-                else:
-                    path["fill_color"] = shape_params[index: index + inc]
+                path["fill_color"] = shape_params[index: index + inc]
                 index += inc
 
                 if self.NEED_STROKE:
@@ -216,16 +198,15 @@ class MyGeneratorFixedSixFigs(nn.Module):
                     index += self.stroke_width_count
 
                     inc = self.stroke_color
-                    if self.USE_PALETTE_PREDICTOR:
-                        path["stroke_color"] = get_color_xxx(shape_params[index: index + inc], predicted_palette)
-                    else:
-                        path["stroke_color"] = shape_params[index: index + inc]
+                    path["stroke_color"] = shape_params[index: index + inc]
                     index += inc
                 else:
                     path["stroke_width"] = torch.tensor(0.0).to(noise.device)
                     path["stroke_color"] = path["fill_color"]
                 paths.append(path)
-
+            if self.USE_PALETTE_PREDICTOR:
+                background_color = colorize(paths, colors=predicted_palette[b_idx], use_triad=use_triad_coloring,
+                                            need_stroke=self.NEED_STROKE)
             if return_diffvg_svg_params:
                 svg_params = to_diffvg_svg_params(paths=paths,
                                                   background_color=background_color,

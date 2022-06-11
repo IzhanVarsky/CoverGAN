@@ -3,9 +3,7 @@ from typing import List, Optional, Union
 import torch
 
 from ..emotions import Emotion
-from ..represent import as_diffvg_render, as_protosvg
-
-import protosvg.protosvg_pb2 as psvg
+from ..represent import as_diffvg_render, as_SVGCont, as_SVGCont2
 
 
 def calc_param_dim(path_count: int, path_segment_count: int):
@@ -53,8 +51,7 @@ class Generator(torch.nn.Module):
         self.max_stroke_width_ = max_stroke_width
 
     def forward(self, noise: torch.Tensor, audio_embedding: torch.Tensor,
-                emotions: Optional[torch.Tensor], return_psvg=False) \
-            -> Union[torch.Tensor, List[psvg.ProtoSVG]]:
+                emotions: Optional[torch.Tensor], return_psvg=False):
         if emotions is not None:
             inp = torch.cat((noise, audio_embedding, emotions), dim=1)
         else:
@@ -64,7 +61,7 @@ class Generator(torch.nn.Module):
         print(f"all_shape_params: {all_shape_params.shape}")
         assert not torch.any(torch.isnan(all_shape_params))
 
-        action = as_protosvg if return_psvg else as_diffvg_render
+        action = as_SVGCont2 if return_psvg else as_diffvg_render
 
         result = []
         for shape_params in all_shape_params:

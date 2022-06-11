@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <meta charset="UTF-8">
+    <title>Rasterize</title>
+</head>
+<body>
+<h2>Welcome to Rasterize service!</h2>
+<div id="generated"></div>
+<form id="main_form" action="/rasterize" method="POST" enctype="multipart/form-data">
+    <label> SVG to rasterize: <textarea id="svgToRaster" type="text" name="svg"></textarea></label> <br> <br>
+    <input type="submit" value="Run app!">
+</form>
+<script>
+    $("#main_form").submit(function (e) {
+        e.preventDefault();
+        let action_url = e.currentTarget.action;
+        $('#generated').empty().append(`<div id="loading_div">Loading...  <progress/></div><br>`);
+        $.ajax({
+            url: action_url,
+            type: 'POST',
+            enctype: 'multipart/form-data',
+            data: new FormData(this),
+            processData: false,
+            contentType: false,
+            cache: false,
+            success: (response) => {
+                console.log(response);
+                // let j = $.parseJSON(response).result;
+                let j = response.result;
+                console.log('Result', j);
+                // console.log('Length', j.length);
+                let res = "";
+                res += `<img src="data:image/png;base64, ${j["res_png1"]}" alt="rasterized img1"/>`;
+                if (j["res_png2"]) {
+                    res += `<img src="data:image/png;base64, ${j["res_png2"]}" alt="rasterized img2"/>`;
+                }
+                if (j["res_png3"]) {
+                    res += `<img src="data:image/png;base64, ${j["res_png3"]}" alt="rasterized img2"/>`;
+                }
+                $('#generated').empty().append(j["svg"] + res);
+            },
+            error: (e) => alert('Error: ' + e)
+        });
+    });
+</script>
+</body>
+</html>

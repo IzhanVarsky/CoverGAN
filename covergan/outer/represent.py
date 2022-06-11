@@ -1,7 +1,7 @@
 from pydiffvg import *
 
-import protosvg.protosvg_pb2 as psvg
-from protosvg.client import color_to_int
+from outer.SVGContainer import SVGContainer, RectTag, PathTag
+from outer.models.cover_classes import Cover, CoverFigure
 
 
 def tensor_color_to_int(t: torch.Tensor, a: float = None):
@@ -13,7 +13,11 @@ def tensor_color_to_int(t: torch.Tensor, a: float = None):
         a = t[3].item()
     else:
         a = round(255 * a)
-    return color_to_int(r, g, b, a)
+    return [r, g, b, a]
+
+
+def color_to_rgb_attr(color):
+    return f"rgb({color[0]}, {color[1]}, {color[2]})"
 
 
 # def to_diffvg_svg_params(paths: [dict], background_color: torch.Tensor, segment_count: int, canvas_size: int) -> \
@@ -88,46 +92,51 @@ def as_diffvg_render(paths: [dict], background_color: torch.Tensor, canvas_size:
     return img
 
 
-def as_protosvg(paths: [dict], background_color: torch.Tensor, canvas_size: int) -> psvg.ProtoSVG:
-    image = psvg.ProtoSVG()
-    image.width = canvas_size
-    image.height = canvas_size
-    image.backgroundColor.rgba = tensor_color_to_int(background_color, 1.0)
-    for p in paths:
-        points = p["points"].round().to(int)  # For `self.path_segment_count_` segments
-        stroke_width = p["stroke_width"].round().to(int).item()
-        stroke_color = tensor_color_to_int(p["stroke_color"])
-        fill_color = tensor_color_to_int(p["fill_color"])
+def as_SVGCont(cover: Cover, canvas_size: int):
+    image = SVGContainer(width=canvas_size, height=canvas_size)
+    backgroundColor = tensor_color_to_int(cover.background_color, 1.0)
+    rect = RectTag(attrs_dict={"width": canvas_size, "height": canvas_size,
+                               "fill": color_to_rgb_attr(backgroundColor),
+                               "fill-opacity": "1"})
+    image.add_inner_node(rect)
+    for p in cover.figures:
+        points = p.points.round().to(int)  # For `self.path_segment_count_` segments
+        stroke_width = p.stroke_width.round().to(int).item()
+        stroke_color = tensor_color_to_int(p.stroke_color)
+        fill_color = tensor_color_to_int(p.fill_color)
 
-        path = psvg.Path()
+        path = PathTag()
 
-        start_point = points[0]
-        move = psvg.MoveTo()
-        move.to.x = start_point[0].item()
-        move.to.y = start_point[1].item()
-        segment = path.segments.add()
-        segment.move.CopyFrom(move)
+        path.move_to(points[0][0].item(), points[0][1].item())
 
         segment_count = (len(points) - 1) // 3
         for j in range(segment_count):
             segment_points = points[1 + j * 3: 1 + (j + 1) * 3]
-
-            cubic = psvg.CubicTo()
-            cubic.startControl.x = segment_points[0][0].item()
-            cubic.startControl.y = segment_points[0][1].item()
-            cubic.endControl.x = segment_points[1][0].item()
-            cubic.endControl.y = segment_points[1][1].item()
-            cubic.end.x = segment_points[2][0].item()
-            cubic.end.y = segment_points[2][1].item()
-
-            segment = path.segments.add()
-            segment.cubic.CopyFrom(cubic)
-        segment = path.segments.add()
-        segment.close.CopyFrom(psvg.ClosePath())
-
-        s = image.shapes.add()
-        s.path.CopyFrom(path)
-        s.color.rgba = fill_color
-        s.stroke.width = stroke_width
-        s.stroke.color.rgba = stroke_color
+            path.cubic_to(segment_points[0][0].item(),
+                          segment_points[0][1].item(),
+                          segment_points[1][0].item(),
+                          segment_points[1][1].item(),
+                          segment_points[2][0].item(),
+                          segment_points[2][1].item())
+        path.close_path()
+        path.add_attrs({"fill": color_to_rgb_attr(fill_color),
+                        "fill-opacity": fill_color[3] / 255.0,
+                        "stroke": color_to_rgb_attr(stroke_color),
+                        "stroke-opacity": stroke_color[3] / 255.0,
+                        "stroke-width": stroke_width,
+                        })
+        image.add_inner_node(path)
     return image
+
+
+def as_SVGCont2(paths: [dict], background_color: torch.Tensor, canvas_size: int):
+    cover = Cover()
+    cover.background_color = background_color
+    for p in paths:
+        fig = CoverFigure()
+        fig.points = p["points"]
+        fig.stroke_width = p["stroke_width"]
+        fig.stroke_color = p["stroke_color"]
+        fig.fill_color = p["fill_color"]
+        cover.add_figure(fig)
+    return as_SVGCont(cover, canvas_size)

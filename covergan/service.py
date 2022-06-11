@@ -1,6 +1,6 @@
 import io
 import logging
-from typing import List, Union
+from typing import Union
 
 import cairosvg
 import numpy as np
@@ -12,7 +12,6 @@ from outer.audio_extractor import audio_to_embedding
 from outer.emotions import Emotion, emotions_one_hot
 from outer.models.generator import Generator
 from outer.models.my_generator_fixed_six_figs import MyGeneratorFixedSixFigs
-from protosvg.client import PSVG
 from service_utils import *
 from utils.bboxes import BBox
 from utils.deterministic_text_fitter import get_all_boxes_info_to_paste, draw_to_draw_object
@@ -102,7 +101,7 @@ def get_captioner(captioner_canvas_size_, weights, device):
 
 
 class CoverService:
-    def __init__(self, protosvg_address: str, gan_weights_ilya: str,
+    def __init__(self, gan_weights_ilya: str,
                  captioner_weights: str,
                  gan_weights_2: str,
                  font_dir: str,
@@ -115,7 +114,6 @@ class CoverService:
 
         self.font_dir_ = font_dir
         self.device_ = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.psvg_client_ = PSVG(protosvg_address)
         self.deterministic_ = deterministic
         self.debug_ = debug
         logger.setLevel(log_level)
@@ -154,7 +152,7 @@ class CoverService:
         if generatorType == GeneratorType.IlyaGenerator:
             logger.info("GEN: Generating the covers with IlyaGenerator...")
             ilya_noise = self.create_noise(num_samples, z_dim=32)
-            psvg_covers: [psvg.ProtoSVG] = self.ilya_generator(ilya_noise, music_tensor, emotions_tensor,
+            psvg_covers = self.ilya_generator(ilya_noise, music_tensor, emotions_tensor,
                                                                return_psvg=True)
         elif generatorType == GeneratorType.GeneratorFixedSixPaths:
             logger.info("GEN: Generating the covers with GeneratorFixedSixPaths...")
@@ -173,14 +171,15 @@ class CoverService:
         if apply_filters:
             logger.info("GEN: Will apply filters.")
             if filtered_samples is None:
-                filtered_samples = round(num_samples // 2)
+                # filtered_samples = round(num_samples // 2)
+                filtered_samples = num_samples
             filters = apply_filters if isinstance(apply_filters, list) else list(OverlayFilter)
             for psvg_cover in psvg_covers[-filtered_samples:]:
                 overlay_filter = random.choice(filters)
                 add_filter(psvg_cover, overlay_filter)
 
         logger.info("PSVG: Rendering backgrounds...")
-        cover_render_pngs = [self.psvg_client_.render(x) for x in psvg_covers]
+        cover_render_pngs = [x.render(renderer_type="cairo") for x in psvg_covers]
         logger.info("PSVG: Backgrounds rendered.")
         if use_captioner:
             logger.info("Using Captioner Model...")
@@ -202,7 +201,7 @@ class CoverService:
             # Combine the covers with the captions
             logger.info("FIT: Fitting the captions...")
             for i in range(num_samples):
-                psvg_cover: psvg.ProtoSVG = psvg_covers[i]
+                psvg_cover = psvg_covers[i]
                 pil_cover: Image.Image = cover_render_pils[i]
                 artist_name_pos: BBox = pos_tensor_to_bbox(artist_name_positions[i])
                 track_name_pos: BBox = pos_tensor_to_bbox(track_name_positions[i])
@@ -226,8 +225,8 @@ class CoverService:
 
                 add_caption(
                     psvg_cover, self.font_dir_,
-                    track_artist, artist_name_pos, rgb_tuple_to_int(artist_name_color), artist_font_family,
-                    track_name, track_name_pos, rgb_tuple_to_int(track_name_color), name_font_family,
+                    track_artist, artist_name_pos, artist_name_color, artist_font_family,
+                    track_name, track_name_pos, track_name_color, name_font_family,
                     debug=self.debug_
                 )
         else:
@@ -239,17 +238,7 @@ class CoverService:
             for i in range(num_samples):
                 psvg_cover = psvg_covers[i]
                 pil_img = pils_render[i]
-                draw = ImageDraw.Draw(pil_img, mode='RGB')
-                to_draw = get_all_boxes_info_to_paste(track_artist, track_name, np.asarray(pil_img),
-                                                      self.font_dir_, for_svg=True)
-                for x in to_draw:
-                    draw_to_draw_object(draw, x)
-                    if x["type"] == "text":
-                        l, t = x["text_xy_left_top"]
-                        ascent = x["ascent"]
-                        t += ascent - 1
-                        r, b = x["text_xy_right_bottom"]
-                        add_ready_text_node(psvg_cover, x["word"], x["color"], x["font"], (l, b), (r, t))
+                paste_caption(psvg_cover, pil_img, track_artist, track_name, self.font_dir_, for_svg=True)
         logger.info("FIT: Captions fitted.")
 
         # Add a service watermark if requested+
@@ -259,11 +248,11 @@ class CoverService:
 
         if rasterize:
             # [(svg_xml: str, png_data: bytes)]
-            output_func = self.psvg_client_.convert_and_render
+            output_func = lambda x: (str(x), x.render(renderer_type="cairo"))
             logger.info("PSVG: Making SVG+PNG...")
         else:
             # [svg_xml: str]
-            output_func = self.psvg_client_.convert_to_svg
+            output_func = str
             logger.info("PSVG: Making SVG...")
         result = list(map(output_func, psvg_covers))
 
@@ -271,14 +260,15 @@ class CoverService:
         for i, res in enumerate(result):
             if rasterize:
                 (svg_xml, png_data) = res
-                svg_xml = add_font_imports_to_svg_xml(svg_xml)
+                # svg_xml = add_font_imports_to_svg_xml(svg_xml)
                 if not use_captioner:
                     png_data = image_to_byte_array(pils_render[i])
                 else:
                     png_data = cairosvg.svg2png(bytestring=svg_xml.encode("utf-8"))
                 new_res.append((svg_xml, png_data))
             else:
-                new_res.append(add_font_imports_to_svg_xml(res))
+                # new_res.append(add_font_imports_to_svg_xml(res))
+                new_res.append(res)
         return new_res
 
     def create_noise(self, num_samples, z_dim):

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <meta charset="UTF-8">
+    <title>Color Extractor</title>
+</head>
+<body>
+<h2>Welcome to Color Extractor service!</h2>
+<div id="generated"></div>
+<form id="main_form" action="/extract_colors" method="POST" enctype="multipart/form-data">
+    <label> Image from: <input id="img" type="file" name="img" accept="image/*"> </label> <br> <br>
+    <label> Number of colors to extract: <input style="width: 2.5em"
+                                                id="color_count" type="number"
+                                                name="color_count" value="5"
+                                                min="1" max="20">
+    </label> <br> <br>
+    <label> Algo type: <select name="algo_type">
+        <option value="1">1</option>
+        <option value="2">2</option>
+    </select> </label> <br> <br>
+    <label> Use random: <select name="use_random">
+        <option>False</option>
+        <option>True</option>
+    </select> </label> <br> <br>
+    <input type="submit" value="Run app!">
+</form>
+<script>
+    $("#main_form").submit(function (e) {
+        e.preventDefault();
+        let action_url = e.currentTarget.action;
+        $('#generated').empty().append(`<div id="loading_div">Loading...  <progress/></div><br>`);
+        $.ajax({
+            url: action_url,
+            type: 'POST',
+            enctype: 'multipart/form-data',
+            data: new FormData(this),
+            processData: false,
+            contentType: false,
+            cache: false,
+            success: (response) => {
+                console.log(response);
+                // let j = $.parseJSON(response).result;
+                let j = response.result;
+                console.log('Result', j);
+                // console.log('Length', j.length);
+                let res = "";
+                for (let i = 0; i < j.length; i++) {
+                    res += `<div style="background: rgb(${j[i]});
+                                 width: 70px;
+                                 height: 70px;
+                                 display: inline-block"></div>`;
+                }
+                $('#generated').empty().append(res);
+            },
+            error: (e) => alert('Error: ' + e)
+        });
+    });
+</script>
+</body>
+</html>

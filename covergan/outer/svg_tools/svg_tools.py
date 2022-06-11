@@ -1,9 +1,9 @@
 import math
 import random
+from enum import Enum
 from typing import List
 
 import torch
-from enum import Enum
 
 PI = math.pi
 
@@ -195,6 +195,23 @@ def create_rand_fig(center: torch.Tensor, big_rad: torch.Tensor, rotationAngle: 
     return rand_func(center, big_rad, rotationAngle, path_depth, deformation)
 
 
+def add_center_fig(shapes, shape_groups, center, circle_rad=3.0, color=[1, 0, 1, 1.0]):
+    import pydiffvg
+    path = pydiffvg.Circle(radius=torch.tensor(circle_rad), center=torch.tensor(center))
+    shapes.append(path)
+    path_group = pydiffvg.ShapeGroup(shape_ids=torch.tensor([len(shape_groups)]),
+                                     fill_color=torch.tensor(color))
+    shape_groups.append(path_group)
+
+
+def add_points_as_circles(shapes, shape_groups, points, circle_rad=3.0,
+                          color1=[0.0, 0.0, 0.0, 1.0],
+                          color2=[1, 0, 0, 1.0]):
+    for idx, center in enumerate(points):
+        fill_color = color1 if idx % 3 == 0 else color2
+        add_center_fig(shapes, shape_groups, center, circle_rad=circle_rad, color=fill_color)
+
+
 class InitFuncType(Enum):
     CIRCLE = 0,
     OVAL = 1,
@@ -205,15 +222,21 @@ class InitFuncType(Enum):
     RAND = 6,
 
 
-# func_type: function, start_fig_segment_count, radius_count
+class BaseMethodConfig:
+    def __init__(self, function, start_fig_segment_count, radius_count):
+        self.base_function = function
+        self.start_fig_segment_count = start_fig_segment_count
+        self.radius_count = radius_count
+
+
 init_func_types_config = {
-    InitFuncType.CIRCLE: [create_circle2, 2, 1],
-    InitFuncType.OVAL: [create_oval, 2, 2],
-    InitFuncType.RECT: [create_rect, 4, 2],
-    InitFuncType.TRIANGLE: [create_triangle, 3, 1],
-    InitFuncType.SQUARE: [create_square, 4, 1],
-    InitFuncType.PENTAGON: [create_pentagon, 5, 1],
-    InitFuncType.RAND: [create_rand_fig, 5, 2],
+    InitFuncType.CIRCLE: BaseMethodConfig(create_circle2, 2, 1),
+    InitFuncType.OVAL: BaseMethodConfig(create_oval, 2, 2),
+    InitFuncType.RECT: BaseMethodConfig(create_rect, 4, 2),
+    InitFuncType.TRIANGLE: BaseMethodConfig(create_triangle, 3, 1),
+    InitFuncType.SQUARE: BaseMethodConfig(create_square, 4, 1),
+    InitFuncType.PENTAGON: BaseMethodConfig(create_pentagon, 5, 1),
+    InitFuncType.RAND: BaseMethodConfig(create_rand_fig, 5, 2),
 }
 
 fig_classes = {

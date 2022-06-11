@@ -1,70 +1,35 @@
-FROM rust:1.52.1 as builder
-
-# Installing `rustup`:
-# curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-
-# Build ProtoSVG
-WORKDIR /usr/src/protosvg
-COPY ./protosvg .
-RUN rustup component add rustfmt
-RUN cargo install --locked --path .
-
 FROM python:3.7
 
 EXPOSE 5001
-EXPOSE 50051
 
-# System dependencies
-RUN apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-        build-essential \
-        cmake \
-        libmagic1 \
-        libraqm-dev \
-        supervisor && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
 
-# Copy the built ProtoSVG
-COPY --from=builder /usr/local/cargo/bin/protosvg /usr/bin/protosvg
+RUN apt-get update -y
+RUN apt-get update
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y python3-pip cmake
+RUN DEBIAN_FRONTEND=noninteractive apt upgrade -y cmake
 
 # Install PyTorch
-#RUN pip install torch==1.9.0+cu111 torchvision==0.10.0+cu111 torchaudio==0.9.0 -f https://download.pytorch.org/whl/torch_stable.html
-#RUN pip3 install torch==1.10.0+cu113 torchvision==0.11.1+cu113 torchaudio==0.10.0+cu113 -f https://download.pytorch.org/whl/cu113/torch_stable.html
 RUN pip3 install torch==1.10.0 torchvision==0.11.1 torchaudio==0.10.0
 
+COPY ./requirements.txt ./requirements_covergan.txt
+COPY ./covergan/requirements.txt ./requirements_server.txt
+WORKDIR .
 # Install other Python libraries
-COPY ./requirements.txt /inference-api/requirements.txt
-RUN pip install -r /inference-api/requirements.txt
+RUN pip install -r ./requirements_covergan.txt
+RUN pip install -r ./requirements_server.txt
 
 # Clone and build DiffVG
 # If problems with installing or using diffvg, check this issue:
 # https://github.com/BachiLi/diffvg/issues/29#issuecomment-994807865
-WORKDIR /tmp/builds
 RUN git clone --recursive https://github.com/BachiLi/diffvg
 RUN cd diffvg && python setup.py install
-RUN rm -rf /tmp/builds
 
-# Configure the supervisor
-COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y libmagickwand-dev
 
-# Copy CoverGAN
-COPY ./covergan/captions /inference-api/covergan/captions
-COPY ./covergan/colorer /inference-api/covergan/colorer
-COPY ./covergan/fonts /inference-api/covergan/fonts
-COPY ./covergan/outer /inference-api/covergan/outer
-COPY ./covergan/protosvg /inference-api/covergan/protosvg
-COPY ./covergan/scripts /inference-api/covergan/scripts
-COPY ./covergan/utils /inference-api/covergan/utils
-COPY ./covergan/*.py /inference-api/covergan/
-COPY ./covergan/weights /inference-api/covergan/weights
+# Install fonts
+COPY ./covergan/fonts /usr/share/fonts
+RUN fc-cache -f -v
 
-WORKDIR /inference-api/covergan
-
-# Copy backend files
-COPY ./gen.py ./gen.py
-COPY ./server.py ./server.py
-COPY ./config.yml ./config.yml
-
-# Run the processes
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+ENTRYPOINT ["./entry.sh"]

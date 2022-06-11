@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <meta charset="UTF-8">
+    <title>Text Paster</title>
+</head>
+<body>
+<h2>Welcome to Text Paster service!</h2>
+<div id="generated"></div>
+<form id="main_form" action="/add_text_svg" method="POST" enctype="multipart/form-data">
+    <label> SVG: <textarea id="svg_img" type="text" name="svg_img"></textarea></label> <br> <br>
+    <label> Artist name: <input id="artistNameInput" type="text" name="artist_name"></label> <br> <br>
+    <label> Track name: <input id="trackNameInput" type="text" name="track_name"></label> <br> <br>
+    <input type="submit" value="Run app!">
+</form>
+<script>
+    $("#main_form").submit(function (e) {
+        e.preventDefault();
+        let action_url = e.currentTarget.action;
+        $('#generated').empty().append(`<div id="loading_div">Loading...  <progress/></div><br>`);
+        $.ajax({
+            url: action_url,
+            type: 'POST',
+            enctype: 'multipart/form-data',
+            data: new FormData(this),
+            processData: false,
+            contentType: false,
+            cache: false,
+            success: (response) => {
+                console.log(response);
+                // let j = $.parseJSON(response).result;
+                let j = response.result;
+                console.log('Result', j);
+                // console.log('Length', j.length);
+                let img_ = `<img src="data:image/png;base64, ${j["png"]}" alt="rasterized img"/>`;
+                $('#generated').empty().append(j["svg_before"] + '<br/>' + j["svg"] + img_);
+            },
+            error: (e) => alert('Error: ' + e)
+        });
+    });
+</script>
+</body>
+</html>

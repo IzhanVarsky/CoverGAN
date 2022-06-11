@@ -64,26 +64,29 @@ def find_two_biggest_specified_not_overlapped_boxes(sorted_lst, is_horizontal_1,
 def get_best_font(phrase_words, fit_func, fonts_dir, font_size_boundaries=(2, 200), for_svg=False):
     max_tries = 50
     for test_ind in range(max_tries):
-        font_name, font_path = get_random_font(fonts_dir, for_svg=for_svg)
-        if test_ind < max_tries - 1 and not font_supports_all_glyphs(phrase_words, font_path):
+        try:
+            font_name, font_path = get_random_font(fonts_dir, for_svg=for_svg)
+            if test_ind < max_tries - 1 and not font_supports_all_glyphs(phrase_words, font_path):
+                continue
+
+            def bs_fit_predicate(size):
+                return fit_func(ImageFont.truetype(font_path, size, encoding="utf-8"))
+
+            lower_bound = font_size_boundaries[0]
+            fontsize = binary_search(bs_fit_predicate, *font_size_boundaries)
+            if fontsize is None:
+                if bs_fit_predicate(lower_bound):
+                    fontsize = lower_bound
+                else:
+                    fontsize = lower_bound - 1
+            font = ImageFont.truetype(font_path, fontsize, encoding="utf-8")
+            # print(f"Font `{font_name}` with fontsize={fontsize}pt chosen.")
+            return font, font_name, fontsize
+        except:
             continue
 
-        def bs_fit_predicate(size):
-            return fit_func(ImageFont.truetype(font_path, size, encoding="utf-8"))
 
-        lower_bound = font_size_boundaries[0]
-        fontsize = binary_search(bs_fit_predicate, *font_size_boundaries)
-        if fontsize is None:
-            if bs_fit_predicate(lower_bound):
-                fontsize = lower_bound
-            else:
-                fontsize = lower_bound - 1
-        font = ImageFont.truetype(font_path, fontsize, encoding="utf-8")
-        # print(f"Font `{font_name}` with fontsize={fontsize}pt chosen.")
-        return font, font_name, fontsize
-
-
-def paste_horizontal_text(lst, phrase, segmented_image, fonts_dir, for_svg=False, debug=False):
+def paste_horizontal_text(lst, phrase, segmented_image, fonts_dir, for_svg=False, debug=True):
     _, x_left, y_top, x_right, y_bottom, area = lst
     rect_height = x_right - x_left
     rect_width = y_bottom - y_top
@@ -118,18 +121,26 @@ def paste_horizontal_text(lst, phrase, segmented_image, fonts_dir, for_svg=False
 
 def get_color(segmented_image, text_x_left, text_x_right, text_y_bottom, text_y_top):
     center_rgb = segmented_image[(text_y_top + text_y_bottom) // 2][(text_x_left + text_x_right) // 2]
-    contrast_rgb = invert_color(*center_rgb)
+    contrast_rgb = contrast_color(*center_rgb)
     center_color = to_int_color((*contrast_rgb,))
     return center_color
 
 
 def get_random_font(fonts_dir, for_svg=False):
-    fnames = os.listdir(fonts_dir)
-    if for_svg:
-        fnames = list(filter(lambda x: "Condensed" not in x, fnames))
-    font_name = np.random.choice(fnames)
-    font_path = f"{fonts_dir}/{font_name}"
-    return font_name, font_path
+    while True:
+        fnames = os.listdir(fonts_dir)
+        if for_svg:
+            fnames = list(filter(lambda x: "Condensed" not in x, fnames))
+        font_name = np.random.choice(fnames)
+        font_path = f"{fonts_dir}/{font_name}"
+        try:
+            for size in range(5, 100):
+                ImageFont.truetype(font_path, size, encoding="utf-8")
+        except Exception as e:
+            print(f"FONT PATH `{font_path}` went to ERROR!!!")
+            print(e)
+            continue
+        return font_name, font_path
 
 
 def draw_circle(draw, x, y, r, color):
@@ -169,7 +180,7 @@ def try_unite_words(words, font, rect_width, rect_height, height_coef):
     return None
 
 
-def paste_vertical_text_by_words(lst, words, segmented_image, fonts_dir, use_word_joining, for_svg=False, debug=False):
+def paste_vertical_text_by_words(lst, words, segmented_image, fonts_dir, use_word_joining, for_svg=False, debug=True):
     result = []
     _, x_left, y_top, x_right, y_bottom, area = lst
     rect_height = x_right - x_left
@@ -247,9 +258,9 @@ def is_horizontal(width, height):
     return height < 1.7 * width
 
 
-def paste_text(lst, phrase, segmented_image, fonts_dir, for_svg=False):
+def paste_text(lst, phrase, segmented_image, fonts_dir, for_svg=False, debug=True):
     if is_horizontal_lst(lst):
-        return paste_horizontal_text(lst, phrase, segmented_image, fonts_dir, for_svg=for_svg)
+        return paste_horizontal_text(lst, phrase, segmented_image, fonts_dir, for_svg=for_svg, debug=debug)
     if " " in phrase:
         is_letters = False
         words = phrase.strip().split()
@@ -258,7 +269,7 @@ def paste_text(lst, phrase, segmented_image, fonts_dir, for_svg=False):
         words = phrase
     return paste_vertical_text_by_words(lst, words, segmented_image, fonts_dir,
                                         use_word_joining=not is_letters,
-                                        for_svg=for_svg)
+                                        for_svg=for_svg, debug=debug)
 
 
 def check_width_and_height(result, min_width, min_height):
@@ -282,6 +293,7 @@ def get_all_boxes_info_to_paste(artist_name, track_name, image, fonts_dir, for_s
     min_text_height = height * 0.03
 
     for k in ks:
+        print(f"Trying k = {k} ...")
         segmented_image, labels, centers = cluster(image, k, with_labels_centers=True)
         centers_gray = np.uint8([i * 128 / (k - 1) for i in range(k)])
         gray_segm = centers_gray[labels.flatten()].reshape((width, height))
@@ -406,7 +418,7 @@ def draw_to_draw_object(draw, d):
         y_t, x_l = d["text_xy_left_top"]
         # draw.ellipse(circle_point(x_l, y_t, 1), d["color"])
         # draw.ellipse(circle_point(p_x - descent, p_y, 2), d["color"])
-        draw_circle(draw, x_l + ascent, y_t, 1, d["color"])
+        draw_circle(draw, x_l + ascent, y_t, 2, d["color"])
 
 
 def find_best_box(base_val, gray_segm, height, width, x, y):

@@ -1,34 +1,3 @@
-# PyDiffVG Python dependencies
-cssutils
-scikit-learn
-scikit-image
-svgwrite
-svgpathtools
-
-# Audio extraction dependencies
-essentia
-eyed3
-mutagen
-
-# CoverGAN dependencies
-grpcio
-grpcio-tools
-Pillow>=8.2.0
-kornia
-matplotlib
-scipy
-cairosvg
-colorthief
-colormath
-imageio
-opencv-python-headless
-fonttools
-googletrans
-lyricsgenius
-svglib
-reportlab
-lxml
-
 # Server dependencies
 cherrypy==18.1.1
 psutil

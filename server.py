@@ -1,19 +1,16 @@
 import base64
-import json
 import logging
 import mimetypes
 import os
 import random
 import tempfile
 import time
-
-import magic
-import psutil
-import yaml
-
 from multiprocessing import get_context, freeze_support
 
 import cherrypy
+import magic
+import psutil
+import yaml
 from cherrypy import log
 
 from outer.emotions import Emotion, emotion_from_str
@@ -24,71 +21,12 @@ process = psutil.Process(os.getpid())  # For monitoring purposes
 
 config = yaml.safe_load(open("config.yml"))
 
+fonts_folder = config["service"]["font_dir"]
+
 log_level = logging.getLevelName(config["app"]["log_level"])
 logger = logging.getLogger("server")
 logger.addHandler(logging.StreamHandler())
 logger.setLevel(log_level)
-
-html_header = \
-    """
-    <html>
-        <head>
-            <title>CoverGAN</title>
-        </head>
-        <body>
-    """
-
-html_footer = \
-    """
-        </body>
-    </html>
-    """
-
-html_body = \
-    """
-    <p>
-    <form action="generate" method="post" enctype="multipart/form-data">
-        Audio file: <input type="file" name="audio_file" accept="audio/*">  <br> <br>
-        Artist name: <input type="text" name="track_artist">  <br> <br>
-        Track name: <input type="text" name="track_name">  <br> <br>
-        Emotion: <select name="emotion">
-                  <option selected>ANGER</option>
-                <option>COMFORTABLE</option>
-                <option>FEAR</option>
-                <option>FUNNY</option>
-                <option>HAPPY</option>
-                <option>INSPIRATIONAL</option>
-                <option>JOY</option>
-                <option>LONELY</option>
-                <option>NOSTALGIC</option>
-                <option>PASSIONATE</option>
-                <option>QUIET</option>
-                <option>RELAXED</option>
-                <option>ROMANTIC</option>
-                <option>SADNESS</option>
-                <option>SERIOUS</option>
-                <option>SOULFUL</option>
-                <option>SURPRISE</option>
-                <option>SWEET</option>
-                <option>WARY</option>
-                 </select>  <br> <br>
-        Generator type: <select name="gen_type">
-                           <option>2</option>
-                           <option>1</option>
-                        </select>  <br> <br>
-        Rasterize: <select name="rasterize">
-                           <option>True</option>
-                           <option>False</option>
-                        </select>  <br> <br>
-        Captioner type: <select name="use_captioner">
-                           <option value="False">2</option>
-                           <option value="True">1</option>
-                        </select>  <br> <br>
-        <input type="submit" value="Upload">
-        </div>
-    </form>
-    </p>
-    """
 
 
 def base64_encode(img):
@@ -100,7 +38,8 @@ def process_generate_request(tmp_filename: str,
                              emotions: [Emotion],
                              rasterize: bool,
                              gen_type: str,
-                             use_captioner: bool) -> [(str, str)]:
+                             use_captioner: bool,
+                             num_samples: int, use_filters: bool):
     start = time.time()
 
     logger.info(f"REQ: artist={track_artist}, name={track_name}, emotions={emotions}, " +
@@ -123,7 +62,7 @@ def process_generate_request(tmp_filename: str,
 
     # Execute the actual heavy computation in a process pool to escape GIL
     result = process_pool.apply(do_generate, (tmp_filename, track_artist, track_name, emotions,
-                                              rasterize, gen_type, use_captioner))
+                                              rasterize, gen_type, use_captioner, num_samples, use_filters))
     os.remove(tmp_filename)
     if rasterize:
         result = list(map(lambda x: {"svg": x[0], "base64": base64_encode(x[1])}, result))
@@ -133,13 +72,18 @@ def process_generate_request(tmp_filename: str,
     time_spent = time.time() - start
     log("Completed api call.Time spent {0:.3f} s".format(time_spent))
 
-    return result
+    return {"result": result}
+
+
+def str_to_bool(s: str):
+    return True if s.upper() == "True".upper() else False
 
 
 class ApiServerController(object):
     @cherrypy.expose('/health')
+    @cherrypy.tools.json_out()
     def health(self):
-        result = {
+        return {
             "status": "OK",
             "info": {
                 "mem": "{0:.3f} MiB".format(process.memory_info().rss / (1024 ** 2)),
@@ -147,16 +91,116 @@ class ApiServerController(object):
                 "threads": len(process.threads())
             }
         }
-        return json.dumps(result).encode("utf-8")
+
+    @cherrypy.expose('/get_emotions')
+    @cherrypy.tools.json_out()
+    def get_emotions(self):
+        return {"emotions": [x.name for x in Emotion]}
 
     @cherrypy.expose('/')
     def index(self):
-        greeting = "<h2>Welcome to CoverGAN service!</h2>\n"
-        return html_header + greeting + html_body + html_footer
+        return open("html/index.html")
+
+    @cherrypy.expose('/style')
+    def style(self):
+        return open("html/style-transfer.html")
+
+    @cherrypy.expose('/raster')
+    def raster(self):
+        return open("html/rasterize.html")
+
+    @cherrypy.expose('/color-extractor')
+    def color_extractor(self):
+        return open("html/color-extractor.html")
+
+    @cherrypy.expose('/text_paste')
+    def text_paste(self):
+        return open("html/text-paste.html")
 
     @cherrypy.expose
+    @cherrypy.tools.json_out()
+    def add_text_svg(self, svg_img=None, artist_name="", track_name=""):
+        from outer.SVGContainer import SVGContainer
+        from service_utils import paste_caption
+        from io import BytesIO
+        svg_cont = SVGContainer.load_svg(svg_img)
+        pil = svg_cont.to_PIL(renderer_type="cairo").convert("RGB")
+        paste_caption(svg_cont, pil, artist_name, track_name, font_dir=fonts_folder)
+        buffered = BytesIO()
+        pil.save(buffered, format="PNG")
+        return {"result": {
+            "svg_before": svg_img,
+            "svg": str(svg_cont),
+            "png": base64_encode(buffered.getvalue())
+        }}
+
+    @cherrypy.expose
+    @cherrypy.tools.json_out()
+    def extract_colors(self, img=None, color_count=None, algo_type="1", use_random: str = False):
+        color_count = int(color_count)
+        use_random = str_to_bool(use_random)
+        from colorer.music_palette_dataset import get_main_rgb_palette, get_main_rgb_palette2
+        with tempfile.NamedTemporaryFile(delete=False) as f:
+            tmp_filename = f.name
+            while True:
+                data = img.file.read()
+                if not data:
+                    break
+                f.write(data)
+        if algo_type == "1":
+            palette = get_main_rgb_palette(tmp_filename, color_count)
+        else:
+            palette = get_main_rgb_palette2(tmp_filename, color_count)
+        print("Palette:", palette)
+        if use_random:
+            random.shuffle(palette)
+        return {"result": [list(map(int, x)) for x in palette]}
+
+    @cherrypy.expose
+    @cherrypy.tools.json_out()
+    def rasterize(self, svg=None):
+        print("svg:", svg)
+        if svg is None:
+            raise cherrypy.HTTPRedirect("/")
+        from outer.SVGContainer import cairo_rendering, wand_rendering, svglib_rendering
+        return {"result": {
+            "svg": svg,
+            "res_png1": base64_encode(cairo_rendering(svg)),
+            # "res_png2": base64_encode(wand_rendering(svg)),
+            # "res_png3": base64_encode(svglib_rendering(svg)),
+        }
+        }
+
+    @cherrypy.expose
+    @cherrypy.tools.json_out()
+    def style_transfer(self, img_from=None, svg_to=None):
+        print("img_from:", img_from)
+        print("svg_to:", svg_to)
+        if img_from.file is None or svg_to is None:
+            raise cherrypy.HTTPRedirect("/")
+        with tempfile.NamedTemporaryFile(delete=False) as f:
+            tmp_filename = f.name
+            while True:
+                data = img_from.file.read()
+                if not data:
+                    break
+                f.write(data)
+        from colorer.transfer_style import transfer_style_str
+        res = {"result": {
+            "img_from": base64_encode(open(tmp_filename, "rb").read()),
+            "svg_to": svg_to,
+            "res_svg": transfer_style_str(tmp_filename, svg_to),
+        }
+        }
+        os.remove(tmp_filename)
+        return res
+
+    @cherrypy.expose
+    @cherrypy.tools.json_out()
     def generate(self, audio_file=None, track_artist: str = None, track_name: str = None, emotion: str = None,
-                 rasterize=True, gen_type="2", use_captioner=False):
+                 rasterize: str = True, gen_type="2", use_captioner: str = False,
+                 num_samples=5, use_filters: str = False):
+        # TODO: Add colorer using
         print("audio_file:", audio_file)
         print("track_artist:", track_artist)
         print("track_name:", track_name)
@@ -165,15 +209,10 @@ class ApiServerController(object):
                 track_artist is None or \
                 track_name is None:
             raise cherrypy.HTTPRedirect("/")
-            # return html_header + html_body + html_footer
-        if rasterize == "True":
-            rasterize = True
-        else:
-            rasterize = False
-        if use_captioner == "True":
-            use_captioner = True
-        else:
-            use_captioner = False
+        rasterize = str_to_bool(rasterize)
+        use_captioner = str_to_bool(use_captioner)
+        use_filters = str_to_bool(use_filters)
+        num_samples = int(num_samples)
         if emotion is None:
             emotion = random.choice(list(Emotion))
         else:
@@ -192,25 +231,13 @@ class ApiServerController(object):
                     break
                 f.write(data)
 
-        generated = process_generate_request(
+        return process_generate_request(
             tmp_filename,
             track_artist, track_name,
             [emotion], rasterize,
-            gen_type, use_captioner
+            gen_type, use_captioner,
+            num_samples, use_filters
         )
-        res_html = html_header
-        res_html += "<h2>Generated SVG's:</h2>"
-        for x in generated:
-            res_html += x["svg"] + '\n'
-        if rasterize:
-            res_html += "<h2>Rasterized SVG's:</h2>"
-            for x in generated:
-                b64 = x["base64"]
-                img_ = f'<img src="data:image/png;base64, {b64}" alt="rasterized img"/>'
-                res_html += img_ + '\n'
-        res_html += html_body
-        res_html += html_footer
-        return res_html
 
 
 if __name__ == '__main__':
@@ -227,7 +254,8 @@ if __name__ == '__main__':
         'tools.response_headers.on': True,
         'tools.encode.encoding': 'utf-8',
         'tools.response_headers.headers': [
-            ('Content-Type', 'text/html;encoding=utf-8')
+            ('Content-Type', 'text/html;encoding=utf-8'),
+            ("Access-Control-Allow-Origin", "*"),
         ],
     })
 

@@ -38,7 +38,8 @@ class Discriminator(torch.nn.Module):
                     bias=False
                 ),
                 torch.nn.LayerNorm([ds_size, ds_size]),
-                torch.nn.LeakyReLU(0.1)
+                # torch.nn.LeakyReLU(0.1),
+                torch.nn.ELU(),
             ]
 
             in_channels = out_channels
@@ -63,8 +64,9 @@ class Discriminator(torch.nn.Module):
             out_features = in_features // 64
             layers += [
                 torch.nn.Linear(in_features=in_features, out_features=out_features),
-                torch.nn.LeakyReLU(0.2),
-                torch.nn.Dropout2d(0.2)
+                # torch.nn.LeakyReLU(0.2),
+                torch.nn.ELU(),
+                # torch.nn.Dropout2d(0.2)
             ]
             in_features = out_features
         layers += [
@@ -78,8 +80,9 @@ class Discriminator(torch.nn.Module):
         output = self.model(transformed_img)
         output = output.reshape(output.shape[0], -1)  # Flatten elements in the batch
         if emotions is None:
-            validity = self.adv_layer(torch.cat((output, audio_embedding), dim=1))
+            inp = torch.cat((output, audio_embedding), dim=1)
         else:
-            validity = self.adv_layer(torch.cat((output, audio_embedding, emotions), dim=1))
+            inp = torch.cat((output, audio_embedding, emotions), dim=1)
+        validity = self.adv_layer(inp)
         assert not torch.any(torch.isnan(validity))
         return validity

@@ -1,7 +1,6 @@
 import logging
 
 import torch
-from torch import nn
 from torch.utils.data.dataloader import DataLoader
 
 from utils.checkpoint import save_checkpoint, load_checkpoint
@@ -11,6 +10,14 @@ from .models.colorer import Colorer
 logger = logging.getLogger("trainer")
 logger.addHandler(logging.StreamHandler())
 logger.setLevel(logging.INFO)
+
+
+def weighted_mse_loss(input, target, weight=None):
+    if weight is None:
+        max_weight = input.size()[1]
+        weight = torch.tensor([(max_weight - i // 3) // 3 for i in range(max_weight)]).to(input.device)
+        weight = weight.repeat((len(input), 1))
+    return (weight * (input - target) ** 2).mean()
 
 
 def train(train_dataloader: DataLoader, gen: Colorer, device: torch.device, training_params: dict,
@@ -23,10 +30,10 @@ def train(train_dataloader: DataLoader, gen: Colorer, device: torch.device, trai
     backup_epochs = training_params["backup_epochs"]
 
     gen_opt = torch.optim.Adam(gen.parameters(), lr=lr)
-    criterion = nn.MSELoss()
+    criterion = weighted_mse_loss
 
     # model_name = f'colorer_{gen.color_type}_{gen.colors_count}_colors'
-    model_name = f'colorer_{gen.colors_count}_colors'
+    model_name = f'colorer_{gen.colors_count}_colors_{train_dataloader.dataset.sorted_color}'
     print("Trying to load checkpoint.")
     epochs_done = load_checkpoint(checkpoint_root, model_name, [gen, gen_opt])
     if epochs_done:
@@ -64,6 +71,7 @@ def train(train_dataloader: DataLoader, gen: Colorer, device: torch.device, trai
             # save_checkpoint(checkpoint_root, model_name, epoch, backup_epochs, [gen, gen_opt])
         if epoch == epochs_done + 1 or epoch % log_interval == 0:
             print('Train Epoch: {}. Loss: {:.6f}'.format(epoch, loss.item()))
+
         save_checkpoint(checkpoint_root, model_name, epoch, backup_epochs, [gen, gen_opt])
 
         avg_train_loss = running_train_loss / (batch_idx + 1)
@@ -92,4 +100,4 @@ def train(train_dataloader: DataLoader, gen: Colorer, device: torch.device, trai
                 running_test_loss += loss
 
             avg_test_loss = running_test_loss / (batch_idx + 1)
-            print('LOSS train {} valid {}'.format(avg_train_loss, avg_test_loss))
+            print('LOSS: train {}; valid {}'.format(avg_train_loss, avg_test_loss))

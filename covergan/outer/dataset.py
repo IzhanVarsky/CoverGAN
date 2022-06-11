@@ -1,42 +1,26 @@
-import os
 from enum import Enum
 from itertools import repeat
-from typing import Optional, Tuple
-import logging
 from multiprocessing import Pool
 from pathlib import Path
+from typing import Optional, Tuple
 
-from PIL import Image
-import torch
-from torch.utils.data.dataset import Dataset
 import torchvision.transforms as transforms
+from PIL import Image
+from torch.utils.data.dataset import Dataset
 
-from .metadata_extractor import get_tag_map
-from .emotions import emotions_one_hot, read_emotion_file
+from utils.dataset_utils import *
 from utils.filenames import normalize_filename
+from .emotions import emotions_one_hot, read_emotion_file
 
 logger = logging.getLogger("dataset")
 logger.addHandler(logging.StreamHandler())
 logger.setLevel(logging.WARNING)
-
-MUSIC_EXTENSIONS = ['flac', 'mp3']
-IMAGE_EXTENSION = '.jpg'
 
 
 class AugmentTransform(Enum):
     NONE = 0
     FLIP_H = 1
     FLIP_V = 2
-
-
-def filename_extension(file_path: str) -> str:
-    ext_with_dot = os.path.splitext(file_path)[1]
-    return ext_with_dot[1:]
-
-
-def replace_extension(file_path: str, new_extension: str) -> str:
-    last_dot = file_path.rfind('.')
-    return file_path[:last_dot] + new_extension
 
 
 def image_file_to_tensor(file_path: str, canvas_size: int, transform: AugmentTransform) -> torch.Tensor:
@@ -50,36 +34,8 @@ def image_file_to_tensor(file_path: str, canvas_size: int, transform: AugmentTra
     return transforms.ToTensor()(image)  # CxHxW
 
 
-def get_cover_from_tags(f):
-    return get_tag_map(f)['cover']
-
-
-def music_tensor_file(checkpoint_root: str, f: str):
-    return f'{checkpoint_root}/{f}.pt'
-
-
-def process_file(f: str, checkpoint_root: str, audio_dir: str, cover_dir: str, num: int = None):
-    music_tensor_f = music_tensor_file(checkpoint_root, f)
-    if not os.path.isfile(music_tensor_f):
-        from .audio_extractor import audio_to_embedding
-
-        logger.info(f'No tensor for {f}, generating...')
-        music_file = f'{audio_dir}/{f}'
-        embedding = torch.from_numpy(audio_to_embedding(music_file, num))
-        torch.save(embedding, music_tensor_f)
-
-    cover_file = f'{cover_dir}/{replace_extension(f, IMAGE_EXTENSION)}'
-    if not os.path.isfile(cover_file):
-        logger.info(f'No cover file for {f}, attempting extraction...')
-        music_file = f'{audio_dir}/{f}'
-        image = get_cover_from_tags(music_file)
-        assert image is not None, f'Failed to extract cover for {f}, aborting!'
-        image.save(cover_file)
-        logger.info(f'Cover image for {f} extracted and saved')
-
-
 def read_music_tensor_for_file(f: str, checkpoint_root: str):
-    music_tensor_f = music_tensor_file(checkpoint_root, f)
+    music_tensor_f = get_tensor_file(checkpoint_root, f)
     assert os.path.isfile(music_tensor_f), f'Music tensor file missing for {f}'
     music_tensor = torch.load(music_tensor_f)
 
@@ -101,34 +57,7 @@ class MusicDataset(Dataset[Tuple[torch.Tensor, torch.Tensor]]):
         self.augment_ = augment
         self.cache_ = {} if should_cache else None
 
-        completion_marker = f'{self.checkpoint_root_}/COMPLETE'
-        if os.path.isfile(completion_marker):
-            dataset_files = sorted([
-                f[:-len('.pt')] for f in os.listdir(self.checkpoint_root_)
-                if f.endswith('.pt')
-            ])
-            for f in dataset_files:
-                cover_file = f'{cover_dir}/{replace_extension(f, IMAGE_EXTENSION)}'
-                assert os.path.isfile(cover_file), f'No cover for {f}'
-            logger.info(f'Dataset considered complete with {len(dataset_files)} tracks and covers.')
-        else:
-            logger.info('Building the dataset based on music')
-            dataset_files = sorted([
-                f for f in os.listdir(audio_dir)
-                if os.path.isfile(f'{audio_dir}/{f}')
-                   and filename_extension(f) in MUSIC_EXTENSIONS
-            ])
-
-            Path(self.checkpoint_root_).mkdir(exist_ok=True)
-            with Pool(maxtasksperchild=50) as pool:
-                pool.starmap(
-                    process_file,
-                    zip(dataset_files, repeat(self.checkpoint_root_), repeat(audio_dir), repeat(cover_dir),
-                        [i for i in range(len(dataset_files))]),
-                    chunksize=100
-                )
-            logger.info('Marking the dataset complete.')
-            Path(completion_marker).touch(exist_ok=False)
+        dataset_files = create_music_tensor_files(self.checkpoint_root_, audio_dir, cover_dir)
 
         self.emotions_dict_ = None
         if emotion_file is not None:

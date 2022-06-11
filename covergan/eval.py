@@ -86,7 +86,6 @@ def main():
 
     # Start the service
     service = CoverService(
-        args.protosvg_address,
         args.gan1_weights,
         args.captioner_weights,
         args.gan2_weights,

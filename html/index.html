@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <meta charset="UTF-8">
+    <title>CoverGAN</title>
+</head>
+<body>
+<h2>Welcome to CoverGAN service!</h2>
+<div>
+    <h3>Other Services Links:</h3>
+    <p><a href="/style">Style Transfer</a></p>
+    <p><a href="/raster">Rasterize</a></p>
+    <p><a href="/color_extractor">Color Extractor</a></p>
+    <p><a href="/text_paste">Text Paste</a></p>
+    <br>
+</div>
+<div id="generated"></div>
+<form id="main_form" action="/generate" method="POST" enctype="multipart/form-data">
+    <label> Audio file: <input id="audioFileInput" type="file" name="audio_file" accept="audio/*"> </label> <br> <br>
+    <label> Artist name: <input id="artistNameInput" type="text" name="track_artist"></label> <br> <br>
+    <label> Track name: <input id="trackNameInput" type="text" name="track_name"></label> <br> <br>
+    <label> Emotion: <select name="emotion">
+        <option selected>ANGER</option>
+        <option>COMFORTABLE</option>
+        <option>FEAR</option>
+        <option>FUNNY</option>
+        <option>HAPPY</option>
+        <option>INSPIRATIONAL</option>
+        <option>JOY</option>
+        <option>LONELY</option>
+        <option>NOSTALGIC</option>
+        <option>PASSIONATE</option>
+        <option>QUIET</option>
+        <option>RELAXED</option>
+        <option>ROMANTIC</option>
+        <option>SADNESS</option>
+        <option>SERIOUS</option>
+        <option>SOULFUL</option>
+        <option>SURPRISE</option>
+        <option>SWEET</option>
+        <option>WARY</option>
+    </select> </label> <br> <br>
+    <label> Generator type: <select name="gen_type">
+        <option>2</option>
+        <option>1</option>
+    </select> </label> <br> <br>
+    <label> Captioner type: <select name="use_captioner">
+        <option value="False">2</option>
+        <option value="True">1</option>
+    </select> </label> <br> <br>
+    <label> Rasterize: <select name="rasterize">
+        <option>True</option>
+        <option>False</option>
+    </select> </label> <br> <br>
+    <label> Use Filters: <select name="use_filters">
+        <option>True</option>
+        <option>False</option>
+    </select> </label> <br> <br>
+    <label> Number of samples to generate: <input style="width: 2.5em"
+                                                  id="numSamples" type="number"
+                                                  name="num_samples" value="5"
+                                                  min="1" max="20">
+    </label> <br> <br>
+    <input type="submit" value="Run app!">
+</form>
+<script>
+    $("#main_form").submit(function (e) {
+        e.preventDefault();
+        if ($(this).find("#audioFileInput")[0].files.length === 0) return
+        let action_url = e.currentTarget.action;
+        $('#generated').empty().append(`<div id="loading_div">Loading...  <progress/></div><br>`);
+        $.ajax({
+            url: action_url,
+            type: 'POST',
+            enctype: 'multipart/form-data',
+            data: new FormData(this),
+            processData: false,
+            contentType: false,
+            cache: false,
+            success: (response) => {
+                console.log(response);
+                // let j = $.parseJSON(response).result;
+                let j = response.result;
+                console.log('Result', j);
+                console.log('Length', j.length);
+                let svgs = "<h2>Generated SVG's:</h2>";
+                let pngs = "<h2>Rasterized SVG's:</h2>";
+                let isRasterize = false;
+                for (let i = 0; i < j.length; i++) {
+                    svgs += j[i]["svg"] + '\n';
+                    let b64 = j[i]["base64"];
+                    if (b64) {
+                        isRasterize = true;
+                        let img_ = `<img src="data:image/png;base64, ${b64}" alt="rasterized img"/>`;
+                        pngs += img_ + '\n';
+                    }
+                }
+                let res = isRasterize ? svgs + pngs : svgs;
+                $('#generated').empty().append(res);
+            },
+            error: (e) => alert('Error: ' + e)
+        });
+    });
+</script>
+</body>
+</html>

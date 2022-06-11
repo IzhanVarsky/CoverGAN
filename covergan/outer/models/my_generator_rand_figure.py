@@ -121,15 +121,13 @@ class MyGeneratorRandFigure(nn.Module):
 
     def forward(self, noise: torch.Tensor, audio_embedding: torch.Tensor,
                 emotions: Optional[torch.Tensor], return_psvg=False, return_diffvg_svg_params=False,
-                use_triad_coloring=False) \
-            -> Union[torch.Tensor, List[psvg.ProtoSVG]]:
+                use_triad_coloring=False):
         forward_fun = self.my_mega_forward
         return forward_fun(noise, audio_embedding, emotions, return_psvg, return_diffvg_svg_params, use_triad_coloring)
 
     def my_mega_forward(self, noise: torch.Tensor, audio_embedding: torch.Tensor,
                         emotions: Optional[torch.Tensor], return_psvg=False, return_diffvg_svg_params=False,
-                        use_triad_coloring=False) \
-            -> Union[torch.Tensor, List[psvg.ProtoSVG]]:
+                        use_triad_coloring=False):
         def get_color_xxx(tens2, arr: np.array):
             nonlocal color_ind
             nonlocal b_idx
@@ -158,7 +156,7 @@ class MyGeneratorRandFigure(nn.Module):
         all_shape_params = self.model_(inp)
         assert not torch.any(torch.isnan(all_shape_params))
 
-        action = as_protosvg if return_psvg else as_diffvg_render
+        action = as_SVGCont2 if return_psvg else as_diffvg_render
 
         result = []
         result_svg_params = []

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <meta charset="UTF-8">
+    <title>Style Transfer</title>
+</head>
+<body>
+<h2>Welcome to Style Transfer service!</h2>
+<div id="generated"></div>
+<form id="main_form" action="/style_transfer" method="POST" enctype="multipart/form-data">
+    <label> Image from: <input id="imgFrom" type="file" name="img_from" accept="image/*"> </label> <br> <br>
+    <label> SVG to: <textarea id="svgTo" type="text" name="svg_to"></textarea></label> <br> <br>
+    <input type="submit" value="Run app!">
+</form>
+<script>
+    $("#main_form").submit(function (e) {
+        e.preventDefault();
+        if ($(this).find("#imgFrom")[0].files.length === 0) return
+        let action_url = e.currentTarget.action;
+        $('#generated').empty().append(`<div id="loading_div">Loading...  <progress/></div><br>`);
+        $.ajax({
+            url: action_url,
+            type: 'POST',
+            enctype: 'multipart/form-data',
+            data: new FormData(this),
+            processData: false,
+            contentType: false,
+            cache: false,
+            success: (response) => {
+                console.log(response);
+                // let j = $.parseJSON(response).result;
+                let j = response.result;
+                console.log('Result', j);
+                // console.log('Length', j.length);
+                let svgs = "<h2>Generated SVG:</h2>";
+                let b64 = j["img_from"]
+                let img_ = `<img src="data:image/png;base64, ${b64}" alt="rasterized img" width="256px"/>`;
+                $('#generated').empty().append(svgs + img_ + j["svg_to"] + j["res_svg"]);
+            },
+            error: (e) => alert('Error: ' + e)
+        });
+    });
+</script>
+</body>
+</html>

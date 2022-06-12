@@ -119,6 +119,16 @@ class ApiServerController(object):
 
     @cherrypy.expose
     @cherrypy.tools.json_out()
+    def svg_to_json(self, svg=None):
+        print("svg:", svg)
+        if svg is None:
+            raise cherrypy.HTTPRedirect("/")
+        from outer.SVGContainer import SVGContainer
+        res_svg_json = SVGContainer.load_svg(svg).to_obj()
+        return {"result": res_svg_json}
+
+    @cherrypy.expose
+    @cherrypy.tools.json_out()
     def add_text_svg(self, svg_img=None, artist_name="", track_name=""):
         from outer.SVGContainer import SVGContainer
         from service_utils import paste_caption

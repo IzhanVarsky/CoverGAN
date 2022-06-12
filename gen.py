@@ -15,7 +15,7 @@ service = CoverService(
 )
 
 
-def do_generate(filename, track_artist, track_name, emotions, rasterize: bool,
+def do_generate(filename, track_artist, track_name, emotions,
                 gen_type: str, use_captioner: bool, num_samples: int, use_filters: bool):
     if gen_type == "1":
         gen_type = GeneratorType.IlyaGenerator
@@ -26,5 +26,5 @@ def do_generate(filename, track_artist, track_name, emotions, rasterize: bool,
     return service.generate(
         filename, track_artist, track_name, emotions,
         num_samples=num_samples, generatorType=gen_type, use_captioner=use_captioner,
-        rasterize=rasterize, apply_filters=use_filters, watermark=False
+        rasterize=True, apply_filters=use_filters, watermark=False
     )

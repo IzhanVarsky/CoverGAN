@@ -36,14 +36,13 @@ def base64_encode(img):
 def process_generate_request(tmp_filename: str,
                              track_artist: str, track_name: str,
                              emotions: [Emotion],
-                             rasterize: bool,
                              gen_type: str,
                              use_captioner: bool,
                              num_samples: int, use_filters: bool):
     start = time.time()
 
     logger.info(f"REQ: artist={track_artist}, name={track_name}, emotions={emotions}, " +
-                f"rasterize={rasterize}, gen_type={gen_type}, use_captioner={use_captioner}")
+                f"gen_type={gen_type}, use_captioner={use_captioner}")
 
     mime = magic.Magic(mime=True)
     ext = mimetypes.guess_extension(mime.from_file(tmp_filename))
@@ -62,12 +61,9 @@ def process_generate_request(tmp_filename: str,
 
     # Execute the actual heavy computation in a process pool to escape GIL
     result = process_pool.apply(do_generate, (tmp_filename, track_artist, track_name, emotions,
-                                              rasterize, gen_type, use_captioner, num_samples, use_filters))
+                                              gen_type, use_captioner, num_samples, use_filters))
     os.remove(tmp_filename)
-    if rasterize:
-        result = list(map(lambda x: {"svg": x[0], "base64": base64_encode(x[1])}, result))
-    else:
-        result = list(map(lambda x: {"svg": x}, result))
+    result = list(map(lambda x: {"svg": x[0], "base64": base64_encode(x[1])}, result))
 
     time_spent = time.time() - start
     log("Completed api call.Time spent {0:.3f} s".format(time_spent))
@@ -207,19 +203,24 @@ class ApiServerController(object):
 
     @cherrypy.expose
     @cherrypy.tools.json_out()
-    def generate(self, audio_file=None, track_artist: str = None, track_name: str = None, emotion: str = None,
-                 rasterize: str = True, gen_type="2", use_captioner: str = False,
+    def generate(self, audio_file=None, track_artist: str = None,
+                 track_name: str = None, emotion: str = None,
+                 gen_type="2", use_captioner: str = False,
                  num_samples=5, use_filters: str = False):
         # TODO: Add colorer using
         print("audio_file:", audio_file)
         print("track_artist:", track_artist)
         print("track_name:", track_name)
+        print("emotion:", emotion)
+        print("gen_type:", gen_type)
+        print("use_captioner:", use_captioner)
+        print("num_samples:", num_samples)
+        print("use_filters:", use_filters)
         if audio_file is None or \
                 audio_file.file is None or \
                 track_artist is None or \
                 track_name is None:
             raise cherrypy.HTTPRedirect("/")
-        rasterize = str_to_bool(rasterize)
         use_captioner = str_to_bool(use_captioner)
         use_filters = str_to_bool(use_filters)
         num_samples = int(num_samples)
@@ -244,7 +245,7 @@ class ApiServerController(object):
         return process_generate_request(
             tmp_filename,
             track_artist, track_name,
-            [emotion], rasterize,
+            [emotion],
             gen_type, use_captioner,
             num_samples, use_filters
         )

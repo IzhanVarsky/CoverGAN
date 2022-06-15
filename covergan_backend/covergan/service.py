@@ -10,7 +10,7 @@ from captions.models.captioner import Captioner
 from outer.audio_extractor import audio_to_embedding
 from outer.emotions import Emotion, emotions_one_hot
 from outer.models.generator import Generator
-from outer.models.my_generator_fixed_six_figs import MyGeneratorFixedSixFigs
+from outer.models.my_generator_fixed_six_figs import GeneratorFixedSixFigs
 from service_utils import *
 from utils.bboxes import BBox
 from utils.deterministic_text_fitter import get_all_boxes_info_to_paste, draw_to_draw_object
@@ -65,7 +65,7 @@ def get_fixed_six_paths(gen_canvas_size_, weights, device):
     audio_embedding_dim = 281 * disc_slices_
     max_stroke_width = 0.01  # relative to the canvas size
     has_emotions = True
-    gen = MyGeneratorFixedSixFigs(
+    gen = GeneratorFixedSixFigs(
         z_dim=z_dim,
         audio_embedding_dim=audio_embedding_dim,
         has_emotions=has_emotions,

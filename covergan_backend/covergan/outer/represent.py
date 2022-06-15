@@ -20,8 +20,6 @@ def color_to_rgb_attr(color):
     return f"rgb({color[0]}, {color[1]}, {color[2]})"
 
 
-# def to_diffvg_svg_params(paths: [dict], background_color: torch.Tensor, segment_count: int, canvas_size: int) -> \
-#         (int, int, List[Union[Rect, Circle, Path]], List[ShapeGroup]):
 def to_diffvg_svg_params(paths: [dict], background_color: torch.Tensor, canvas_size: int):
     shapes = []
     shape_groups = []

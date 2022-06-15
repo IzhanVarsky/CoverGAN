@@ -9,10 +9,10 @@ from colorer.test_model import get_palette_predictor
 from fonts_cfg import FONTS
 from outer.dataset import read_music_tensor_for_file
 from outer.emotions import Emotion, emotion_from_str, emotions_one_hot
-from outer.models.my_gen_fixed_6figs32_good import MyGeneratorFixedSixFigs32Good
-from outer.models.my_generator_fixed_six_figs import MyGeneratorFixedSixFigs
+from outer.models.my_gen_fixed_6figs32_good import GeneratorFixedSixFigs32Good
+from outer.models.my_generator_fixed_six_figs import GeneratorFixedSixFigs
 from outer.models.my_generator_fixed_six_figs_backup import MyGeneratorFixedSixFigs32
-from outer.models.my_generator_rand_figure import MyGeneratorRandFigure
+from outer.models.my_generator_rand_figure import GeneratorRandFigure
 from outer.models.my_generator_three_figs import MyGeneratorFixedThreeFigs32
 from service_utils import *
 from utils.bboxes import BBox
@@ -33,10 +33,10 @@ def run_track(audio_file_name, track_artist, track_name, emotions=None,
 
     # gan_weights = "dataset_full_covers/checkpoint/cgan_out.pt"
     a = ("dataset_full_covers/checkpoint/checkpoint_hz.pt",
-         MyGeneratorRandFigure,
+         GeneratorRandFigure,
          512)
     b = ("dataset_full_covers/checkpoint/checkpoint_6figs_5depth_512noise.pt",
-         MyGeneratorFixedSixFigs,
+         GeneratorFixedSixFigs,
          512)
     c = ("dataset_full_covers/checkpoint/cgan_out.pt",
          MyGeneratorFixedSixFigs32,
@@ -48,7 +48,7 @@ def run_track(audio_file_name, track_artist, track_name, emotions=None,
          MyGeneratorFixedThreeFigs32,
          32)
     f = ("dataset_full_covers/checkpoint/cgan_6figs_32noise_separated_palette_tanh_betas-880.pt",
-         MyGeneratorFixedSixFigs32Good,
+         GeneratorFixedSixFigs32Good,
          32)
     gan_weights, gen_type, z_dim = f
     captioner_weights = "./weights/captioner.pt"

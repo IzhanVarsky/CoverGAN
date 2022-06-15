@@ -7,7 +7,7 @@ from torch.utils.data.dataloader import DataLoader
 import pydiffvg
 
 from .models.my_discriminator import MyDiscriminator
-from .models.my_gen_fixed_6figs32_good import MyGeneratorFixedSixFigs32Good
+from .models.my_gen_fixed_6figs32_good import GeneratorFixedSixFigs32Good
 from .models.my_generator import MyGenerator
 from .models.generator import Generator
 from .models.discriminator import Discriminator
@@ -17,12 +17,12 @@ from utils.checkpoint import save_checkpoint, load_checkpoint
 from utils.plotting import plot_losses, plot_grad_flow, plot_real_fake_covers
 from .models.my_generator_circle_paths import MyGeneratorCircled
 from .models.my_generator_fixed_figure import MyGeneratorFixedFigure
-from .models.my_generator_fixed_six_figs import MyGeneratorFixedSixFigs
+from .models.my_generator_fixed_six_figs import GeneratorFixedSixFigs
 from .models.my_generator_fixed_six_figs_backup import MyGeneratorFixedSixFigs32
 from .models.my_generator_oval_paths_multi import MyGeneratorOvaledMulti
 from .models.generator_multi_shape import GeneratorMultiShape
 from .models.my_generator_fixed_multi_circle import MyGeneratorFixedMultiCircle
-from .models.my_generator_rand_figure import MyGeneratorRandFigure
+from .models.my_generator_rand_figure import GeneratorRandFigure
 from .models.my_generator_three_figs import MyGeneratorFixedThreeFigs32
 
 logger = logging.getLogger("trainer")
@@ -35,10 +35,10 @@ logger.setLevel(logging.INFO)
 # generator_type = MyGeneratorFixedMultiCircle
 # generator_type = MyGeneratorFixedFigure
 # generator_type = MyGeneratorRandFigure
-generator_type = MyGeneratorFixedSixFigs
+generator_type = GeneratorFixedSixFigs
 generator_type = MyGeneratorFixedSixFigs32
 generator_type = MyGeneratorFixedThreeFigs32
-generator_type = MyGeneratorFixedSixFigs32Good
+generator_type = GeneratorFixedSixFigs32Good
 # generator_type = MyGeneratorOvaledMulti
 # generator_type = GeneratorMultiShape
 

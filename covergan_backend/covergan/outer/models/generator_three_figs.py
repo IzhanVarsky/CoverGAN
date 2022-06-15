@@ -9,10 +9,10 @@ from ..represent import *
 from ..svg_tools.svg_tools import *
 
 
-class MyGeneratorFixedThreeFigs32(nn.Module):
+class GeneratorFixedThreeFigs32(nn.Module):
     def __init__(self, z_dim: int, audio_embedding_dim: int, has_emotions: bool, num_layers: int, canvas_size: int,
                  path_count: int, path_segment_count: int, max_stroke_width: float):
-        super(MyGeneratorFixedThreeFigs32, self).__init__()
+        super(GeneratorFixedThreeFigs32, self).__init__()
         self.figs_config = [
             init_func_types_config[InitFuncType.RECT],
             init_func_types_config[InitFuncType.TRIANGLE],
@@ -83,45 +83,11 @@ class MyGeneratorFixedThreeFigs32(nn.Module):
         ]
         my_layers = layers
 
-        # my_layers = [
-        #     torch.nn.Linear(in_features=in_features, out_features=512),
-        #     torch.nn.BatchNorm1d(num_features=512),
-        #     torch.nn.LeakyReLU(0.2),
-        #     torch.nn.Linear(in_features=512, out_features=256),
-        #     torch.nn.BatchNorm1d(num_features=256),
-        #     torch.nn.LeakyReLU(0.2),
-        #     torch.nn.Linear(in_features=256, out_features=64),
-        #     torch.nn.BatchNorm1d(num_features=64),
-        #     torch.nn.LeakyReLU(0.2),
-        #     torch.nn.Linear(in_features=64, out_features=16),
-        #     torch.nn.BatchNorm1d(num_features=16),
-        #     torch.nn.LeakyReLU(0.2),
-        #     torch.nn.Linear(in_features=16, out_features=128),
-        #     torch.nn.BatchNorm1d(num_features=128),
-        #     torch.nn.LeakyReLU(0.2),
-        #     torch.nn.Linear(in_features=128, out_features=self.out_dim),
-        #     torch.nn.Sigmoid()
-        # ]
-        # my_layers = [
-        #     torch.nn.Linear(in_features=in_features, out_features=512),
-        #     torch.nn.BatchNorm1d(num_features=512),
-        #     torch.nn.LeakyReLU(0.2),
-        #     torch.nn.Linear(in_features=512, out_features=self.out_dim),
-        #     torch.nn.Sigmoid()
-        # ]
-        # my_layers = [
-        #     torch.nn.Linear(in_features=in_features, out_features=self.out_dim),
-        #     torch.nn.Sigmoid()
-        # ]
         if self.USE_ATTN:
             self.trans = nn.TransformerEncoderLayer(d_model=self.no_random_in_features, nhead=1)
 
         self.model_ = torch.nn.Sequential(*my_layers)
-        # self.transformer_block = TransformerBlock(1, 2, False)
-        # self.attn_decoder = AttnDecoderRNN(in_features, self.out_dim)
-        # self.decoder_hidden = self.attn_decoder.initHidden()
         self.sigmoid = torch.nn.Sigmoid()
-        # self.rnn = nn.LSTM(in_features, self.out_dim, 2, bidirectional=True)
         self.canvas_size_ = canvas_size
         self.max_stroke_width_ = max_stroke_width
 

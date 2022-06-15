@@ -350,20 +350,20 @@ def paste_caption(svg_cont: SVGContainer,
                                                      color_to_rgb_attr(d["color"])))
             svg_cont.add_inner_node(CircleTag.create(2, y_t, x_l + ascent + descent, "pink"))
 
-    def add_font_imports_to_svg_xml(svg_xml):
-        from xml.dom import minidom
-        tree = minidom.parseString(svg_xml)
-        texts = tree.getElementsByTagName("text")
-        families = set()
-        for t in texts:
-            style = t.attributes['style'].value
-            attrs = style.split(";")
-            font_attrs = list(filter(lambda x: x.startswith("font-family"), attrs))
-            if len(font_attrs) != 0:
-                families.add(font_attrs[0].split(":")[1])
-        style_text = ""
-        for f in families:
-            style_text += f"@import url('https://fonts.googleapis.com/css?family={f}');\n"
-        split = svg_xml.split("\n")
-        split.insert(1, f"<style>{style_text}</style>")
-        return "\n".join(split)
+def add_font_imports_to_svg_xml(svg_xml):
+    from xml.dom import minidom
+    tree = minidom.parseString(svg_xml)
+    texts = tree.getElementsByTagName("text")
+    families = set()
+    for t in texts:
+        style = t.attributes['style'].value
+        attrs = style.split(";")
+        font_attrs = list(filter(lambda x: x.startswith("font-family"), attrs))
+        if len(font_attrs) != 0:
+            families.add(font_attrs[0].split(":")[1])
+    style_text = ""
+    for f in families:
+        style_text += f"@import url('https://fonts.googleapis.com/css?family={f}');\n"
+    split = svg_xml.split("\n")
+    split.insert(1, f"<style>{style_text}</style>")
+    return "\n".join(split)

@@ -1,0 +1,1 @@
+docker build -t covergan_front -f ./Dockerfile .

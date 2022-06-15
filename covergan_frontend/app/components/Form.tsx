@@ -113,9 +113,9 @@ export default function Form() {
       audio_file: undefined,
       track_artist: { artistName },
       track_name: { trackName },
-      emotion: 'anger',
-      gen_type: "1",
-      use_captioner: "1",
+      emotion: 'HAPPY',
+      gen_type: "2",
+      use_captioner: "False",
       num_samples: 5,
       use_filters: false,
     },
@@ -182,17 +182,27 @@ export default function Form() {
               required
               {...form.getInputProps('gen_type')}
             >
-              <Radio value="1" label="1"/>
-              <Radio value="2" label="2"/>
+              <Radio value="1" label="Old"/>
+              <Radio value="2" label="New 1"/>
+              <Radio value="3" label="New 2"/>
+              <Radio value="4" label="New 3"/>
+              <Radio value="5" label="New 4"/>
             </RadioGroup>
             <RadioGroup
               label="Captioner type"
               required
               {...form.getInputProps('use_captioner')}
             >
-              <Radio value="1" label="1"/>
-              <Radio value="2" label="2"/>
+              <Radio value="True" label="Old"/>
+              <Radio value="False" label="New"/>
             </RadioGroup>
+            <InputWrapper label="Emotion">
+              <NativeSelect
+                data={emotions}
+                required
+                {...form.getInputProps('emotion')}
+              />
+            </InputWrapper>
             <NumberInput
               placeholder="Number of covers"
               label="Number of covers"
@@ -201,13 +211,6 @@ export default function Form() {
               required
               {...form.getInputProps('num_samples')}
             />
-            <InputWrapper label="Emotion">
-              <NativeSelect
-                data={emotions}
-                required
-                {...form.getInputProps('emotion')}
-              />
-            </InputWrapper>
             <Switch
               size="md"
               label="Use color filters"

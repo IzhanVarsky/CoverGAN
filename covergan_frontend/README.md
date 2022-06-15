@@ -1,8 +1,12 @@
-# Welcome to Remix!
+# CoverGAN frontend server
+This application is a React framework based on [Remix](https://remix.run/docs).
 
-- [Remix Docs](https://remix.run/docs)
+### Installing dependencies
+Install [NodeJS](https://nodejs.org/en/download/).
 
-## Development
+Run: `npm install`.
+
+### Development
 
 From your terminal:
 
@@ -10,11 +14,11 @@ From your terminal:
 npm run dev
 ```
 
-This starts your app in development mode, rebuilding assets on file changes.
+This starts the app in development mode, rebuilding assets on file changes.
 
-## Deployment
+### Local Deployment
 
-First, build your app for production:
+First, build the app for production:
 
 ```sh
 npm run build
@@ -28,26 +32,17 @@ npm start
 
 Now you'll need to pick a host to deploy it to.
 
-### DIY
+### Docker deployment
+Specify the port of the app in [Dockerfile](Dockerfile) and in [running script](./docker_run_covergan_front.sh). By default the port is set to `5001`. 
 
-If you're familiar with deploying node applications, the built-in Remix app server is production-ready.
+Specify the host of backend service in [config.json](./app/config.json).
 
-Make sure to deploy the output of `remix build`
-
-- `build/`
-- `public/build/`
-
-### Using a Template
-
-When you ran `npx create-remix@latest` there were a few choices for hosting. You can run that again to create a new project, then copy over your `app/` folder to the new project that's pre-configured for your target server.
-
+Build the docker image:
 ```sh
-cd ..
-# create a new project, and pick a pre-configured host
-npx create-remix@latest
-cd my-new-remix-app
-# remove the new project's app (not the old one!)
-rm -rf app
-# copy your app over
-cp -R ../my-old-remix-app/app app
+./docker_run_covergan_front.sh
+```
+
+Run the container:
+```sh
+./docker_build_covergan_front.sh
 ```

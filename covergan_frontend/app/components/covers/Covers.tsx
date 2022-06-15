@@ -16,7 +16,7 @@ export default function Covers() {
       :
       <Shape>
         <Center>
-          <Text size={'xl'} weight={'bolder'}>Hi! Generate some pictures!</Text>
+          <Text size={'xl'} weight={'bolder'}>Welcome! Generate some covers!</Text>
         </Center>
       </Shape>
   )

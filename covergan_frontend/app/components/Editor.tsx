@@ -244,6 +244,8 @@ export default function Main() {
                   <NumberInput
                     defaultValue={imageSizeToDownload}
                     onChange={(val) => setImageSizeToDownload(val)}
+                    min={0}
+                    max={10000}
                     placeholder="Image size"
                     label="Image size"
                     required

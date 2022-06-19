@@ -10,6 +10,8 @@
 users'
 audio tracks and emotions. Resulting covers are generated in vector graphics format (SVG).
 
+Service is available at http://109.188.135.85:5001/.
+
 Available emotions:
 
 * Anger

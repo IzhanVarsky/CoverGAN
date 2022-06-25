@@ -1,5 +1,0 @@
-# Server dependencies
-cherrypy==18.1.1
-psutil
-python-magic
-pyyaml

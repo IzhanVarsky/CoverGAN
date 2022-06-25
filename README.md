@@ -109,7 +109,7 @@ python3 ./eval.py \
 
 ## Examples of generated covers
 
-See [this](./covergan/examples) examples folder.
+See [this](./examples) examples folder.
 
 ## Contents
 

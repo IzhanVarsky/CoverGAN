@@ -61,7 +61,7 @@ def find_two_biggest_specified_not_overlapped_boxes(sorted_lst, is_horizontal_1,
     return first, None
 
 
-def get_best_font(phrase_words, fit_func, fonts_dir, font_size_boundaries=(2, 200), for_svg=False):
+def get_best_font(phrase_words, fit_func, fonts_dir, font_size_boundaries=(8, 200), for_svg=False):
     max_tries = 50
     for test_ind in range(max_tries):
         try:
@@ -86,7 +86,7 @@ def get_best_font(phrase_words, fit_func, fonts_dir, font_size_boundaries=(2, 20
             continue
 
 
-def paste_horizontal_text(lst, phrase, segmented_image, fonts_dir, for_svg=False, debug=True):
+def paste_horizontal_text(lst, phrase, segmented_image, fonts_dir, for_svg=False, debug=False):
     _, x_left, y_top, x_right, y_bottom, area = lst
     rect_height = x_right - x_left
     rect_width = y_bottom - y_top
@@ -120,7 +120,10 @@ def paste_horizontal_text(lst, phrase, segmented_image, fonts_dir, for_svg=False
 
 
 def get_color(segmented_image, text_x_left, text_x_right, text_y_bottom, text_y_top):
-    center_rgb = segmented_image[(text_y_top + text_y_bottom) // 2][(text_x_left + text_x_right) // 2]
+    try:
+        center_rgb = segmented_image[(text_y_top + text_y_bottom) // 2][(text_x_left + text_x_right) // 2]
+    except:
+        center_rgb = segmented_image[text_y_top // 2][text_x_left // 2]
     contrast_rgb = contrast_color(*center_rgb)
     center_color = to_int_color((*contrast_rgb,))
     return center_color
@@ -180,7 +183,7 @@ def try_unite_words(words, font, rect_width, rect_height, height_coef):
     return None
 
 
-def paste_vertical_text_by_words(lst, words, segmented_image, fonts_dir, use_word_joining, for_svg=False, debug=True):
+def paste_vertical_text_by_words(lst, words, segmented_image, fonts_dir, use_word_joining, for_svg=False, debug=False):
     result = []
     _, x_left, y_top, x_right, y_bottom, area = lst
     rect_height = x_right - x_left
@@ -258,7 +261,7 @@ def is_horizontal(width, height):
     return height < 1.7 * width
 
 
-def paste_text(lst, phrase, segmented_image, fonts_dir, for_svg=False, debug=True):
+def paste_text(lst, phrase, segmented_image, fonts_dir, for_svg=False, debug=False):
     if is_horizontal_lst(lst):
         return paste_horizontal_text(lst, phrase, segmented_image, fonts_dir, for_svg=for_svg, debug=debug)
     if " " in phrase:

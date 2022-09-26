@@ -12,7 +12,7 @@ def cluster(image, k=4, with_labels_centers=False, only_labels_centers=False):
     centers = np.uint8(centers)
     if only_labels_centers:
         return labels, centers
-    segmented_data = centers[labels.flatten()]  # Mapping labels to center points( RGB Value)
+    segmented_data = centers[labels.flatten()]  # Mapping labels to center points (RGB Value)
     res = segmented_data.reshape(image.shape)
     if with_labels_centers:
         return res, labels, centers

@@ -200,8 +200,8 @@ class RadialGradientTag(OpenSVGTag):
     def __init__(self, attrs_dict=None):
         super().__init__(tag_name="radialGradient", attrs_dict=attrs_dict)
 
-    def add_stop(self, offset, stop_color, stop_opacity):
-        t = CloseSVGTag("stop", {"offset": offset, "stop-color": stop_color, "stop-opacity": stop_opacity})
+    def add_stop(self, offset, stop_color):
+        t = CloseSVGTag("stop", {"offset": offset, "stop-color": stop_color})
         self.add_inner_node(t)
 
 
@@ -221,8 +221,9 @@ class SVGContainer(OpenSVGTag):
         self.free_id_num = 0
 
     def bind_tags_with_id(self, tag1: BasicSVGTag, tag2: BasicSVGTag, field_name):
-        tag1.add_attr(field_name, f"url(#id{self.free_id_num})")
-        tag2.add_attr("id", f"id{self.free_id_num}")
+        tag_id = f"id{self.free_id_num}"
+        tag1.add_attr(field_name, f"url(#{tag_id})")
+        tag2.add_attr("id", tag_id)
         self.free_id_num += 1
 
     def save_svg(self, out_filename: str):
@@ -245,12 +246,12 @@ class SVGContainer(OpenSVGTag):
             out.write(self.render(renderer_type))
 
     @classmethod
-    def load_svg(cls, svg_str):
+    def load_svg(cls, svg_str, use_font_importer=False):
         from xml.dom import minidom
         tree = minidom.parseString(svg_str)
         root = tree.getElementsByTagName("svg")[0]
         root_attrs = dict(root.attributes.items())
-        res = SVGContainer(root_attrs["width"], root_attrs["height"])
+        res = SVGContainer(root_attrs["width"], root_attrs["height"], use_font_importer=use_font_importer)
         res.add_attrs(root_attrs)
 
         def traverse_tree(parent: OpenSVGTag, node):

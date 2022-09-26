@@ -9,25 +9,29 @@ from ..represent import *
 from ..svg_tools.svg_tools import *
 
 
-class GeneratorFixedThreeFigs32(nn.Module):
+class MyGeneratorFixedSixFigs32(nn.Module):
     def __init__(self, z_dim: int, audio_embedding_dim: int, has_emotions: bool, num_layers: int, canvas_size: int,
-                 path_count: int, path_segment_count: int, max_stroke_width: float):
-        super(GeneratorFixedThreeFigs32, self).__init__()
+                 path_count: int, path_segment_count: int, max_stroke_width: float,
+                 palette_model_weights=""):
+        super(MyGeneratorFixedSixFigs32, self).__init__()
         self.figs_config = [
             init_func_types_config[InitFuncType.RECT],
+            init_func_types_config[InitFuncType.TRIANGLE],
+            init_func_types_config[InitFuncType.RECT],
+            init_func_types_config[InitFuncType.TRIANGLE],
             init_func_types_config[InitFuncType.TRIANGLE],
             init_func_types_config[InitFuncType.PENTAGON],
         ]
         path_count = len(self.figs_config)
-        self.path_depth = 3
-        self.radius_coef = 0.4
+        self.path_depth = 4
+        self.radius_coef = 0.35
         self.deform_coef = 0.15
 
         self.USE_ATTN = False
         self.NEED_STROKE = False
         self.USE_PALETTE_PREDICTOR = True
         if self.USE_PALETTE_PREDICTOR:
-            self.palette_predictor = get_palette_predictor()
+            self.palette_predictor = get_palette_predictor(color_predictor_weights=palette_model_weights)
             self.palette_predictor.eval()
 
         in_features = z_dim + audio_embedding_dim
@@ -50,10 +54,10 @@ class GeneratorFixedThreeFigs32(nn.Module):
             for ind, conf in enumerate(self.figs_config)
         ]
 
-        addable_count = 0
+        self.addable_count = 0
         if self.NEED_STROKE:
             self.stroke_width_count = 1
-            addable_count += self.stroke_width_count
+            self.addable_count += self.stroke_width_count
         if self.USE_PALETTE_PREDICTOR:
             # 1 = A (alpha)
             self.fill_color = 1
@@ -62,9 +66,9 @@ class GeneratorFixedThreeFigs32(nn.Module):
             # 4 = RGBA
             self.fill_color = 4
             self.stroke_color = 4 if self.NEED_STROKE else 0
-        addable_count += self.fill_color + self.stroke_color
+        self.addable_count += self.fill_color + self.stroke_color
         self.out_dim = self.background_color_count + sum(self.all_points_count_for_each_fig) \
-                       + len(self.all_points_count_for_each_fig) * addable_count
+                       + len(self.all_points_count_for_each_fig) * self.addable_count
 
         out_features = self.out_dim
         feature_step = (in_features - out_features) // num_layers
@@ -83,17 +87,51 @@ class GeneratorFixedThreeFigs32(nn.Module):
         ]
         my_layers = layers
 
+        # my_layers = [
+        #     torch.nn.Linear(in_features=in_features, out_features=512),
+        #     torch.nn.BatchNorm1d(num_features=512),
+        #     torch.nn.LeakyReLU(0.2),
+        #     torch.nn.Linear(in_features=512, out_features=256),
+        #     torch.nn.BatchNorm1d(num_features=256),
+        #     torch.nn.LeakyReLU(0.2),
+        #     torch.nn.Linear(in_features=256, out_features=64),
+        #     torch.nn.BatchNorm1d(num_features=64),
+        #     torch.nn.LeakyReLU(0.2),
+        #     torch.nn.Linear(in_features=64, out_features=16),
+        #     torch.nn.BatchNorm1d(num_features=16),
+        #     torch.nn.LeakyReLU(0.2),
+        #     torch.nn.Linear(in_features=16, out_features=128),
+        #     torch.nn.BatchNorm1d(num_features=128),
+        #     torch.nn.LeakyReLU(0.2),
+        #     torch.nn.Linear(in_features=128, out_features=self.out_dim),
+        #     torch.nn.Sigmoid()
+        # ]
+        # my_layers = [
+        #     torch.nn.Linear(in_features=in_features, out_features=512),
+        #     torch.nn.BatchNorm1d(num_features=512),
+        #     torch.nn.LeakyReLU(0.2),
+        #     torch.nn.Linear(in_features=512, out_features=self.out_dim),
+        #     torch.nn.Sigmoid()
+        # ]
+        # my_layers = [
+        #     torch.nn.Linear(in_features=in_features, out_features=self.out_dim),
+        #     torch.nn.Sigmoid()
+        # ]
         if self.USE_ATTN:
             self.trans = nn.TransformerEncoderLayer(d_model=self.no_random_in_features, nhead=1)
 
         self.model_ = torch.nn.Sequential(*my_layers)
+        # self.transformer_block = TransformerBlock(1, 2, False)
+        # self.attn_decoder = AttnDecoderRNN(in_features, self.out_dim)
+        # self.decoder_hidden = self.attn_decoder.initHidden()
         self.sigmoid = torch.nn.Sigmoid()
+        # self.rnn = nn.LSTM(in_features, self.out_dim, 2, bidirectional=True)
         self.canvas_size_ = canvas_size
         self.max_stroke_width_ = max_stroke_width
 
     def forward(self, noise: torch.Tensor, audio_embedding: torch.Tensor,
                 emotions: Optional[torch.Tensor], return_psvg=False, return_diffvg_svg_params=False,
-                use_triad_coloring=False):
+                use_triad_coloring=False, palette_generator=None):
         forward_fun = self.my_mega_forward
         return forward_fun(noise, audio_embedding, emotions, return_psvg, return_diffvg_svg_params, use_triad_coloring)
 

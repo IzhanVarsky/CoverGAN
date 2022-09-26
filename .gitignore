@@ -1,3 +1,34 @@
+# Project ignores
+captions/captioned_images
+colorer/check_volume
+colorer/check_volume_ckpts
+colorer/*.jpg
+colorer/*.svg
+colorer/*.png
+diffvg_tmp_old
+diffvg_tmp
+fonts
+gen_samples_demo
+generated_covers_*
+not_found_audio
+OLD
+old_generated
+plots
+test_audio
+vae_check
+vae_train.py
+utils/sequences.py
+utils/tensors.py
+utils/weight_init.py
+utils/weight_clipper.py
+scripts
+outer/models/former
+outer/models/raster_generator.py
+outer/models/rnn_generator.py
+outer/*.svg
+outer/*.png
+repair_all_bash_scripts_to_linux.sh
+
 .idea
 # Byte-compiled / optimized / DLL files
 __pycache__/

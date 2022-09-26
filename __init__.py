@@ -1,6 +1,6 @@
-__all__ = ["captions", "outer", "protosvg", "utils"]
+__all__ = ["captions", "outer", "colorer", "utils"]
 
 from covergan import captions
 from covergan import outer
-from covergan import protosvg
+from covergan import colorer
 from covergan import utils

@@ -11,7 +11,7 @@ from kornia.color import rgb_to_rgba
 from torchvision.transforms.functional import to_tensor
 
 from outer.SVGContainer import *
-from outer.represent import color_to_rgb_attr
+from outer.represent import color_to_rgba_attr
 from utils.bboxes import BBox, merge_bboxes
 from utils.color_contrast import sufficient_contrast, contrast
 from utils.color_extractor import extract_primary_color
@@ -28,6 +28,10 @@ class OverlayFilter(Enum):
     WHITEN = 4
 
 
+def color_to_rgb_attr(color):
+    return f"rgb({color[0]}, {color[1]}, {color[2]})"
+
+
 def add_filter(image: SVGContainer, f: OverlayFilter):
     rect = RectTag(attrs_dict={"x": 0, "y": 0,
                                "width": image.width,
@@ -36,18 +40,18 @@ def add_filter(image: SVGContainer, f: OverlayFilter):
     image.add_inner_node(rect)
 
     if f == OverlayFilter.DIM:
-        rect.add_attrs({"fill": color_to_rgb_attr([0, 0, 0]), "fill-opacity": 100 / 255.0})
+        rect.add_attr("fill", color_to_rgba_attr([0, 0, 0, 100]))
     elif f == OverlayFilter.VINTAGE:
-        rect.add_attrs({"fill": color_to_rgb_attr([255, 244, 226]), "fill-opacity": 100 / 255.0})
+        rect.add_attr("fill", color_to_rgba_attr([255, 244, 226, 100]))
     elif f == OverlayFilter.SEPIA:
-        rect.add_attrs({"fill": color_to_rgb_attr([173, 129, 66]), "fill-opacity": 100 / 255.0})
+        rect.add_attr("fill", color_to_rgba_attr([173, 129, 66, 100]))
     elif f == OverlayFilter.WHITEN:
-        rect.add_attrs({"fill": color_to_rgb_attr([255, 255, 255]), "fill-opacity": 100 / 255.0})
+        rect.add_attr("fill", color_to_rgba_attr([255, 255, 255, 100]))
     elif f == OverlayFilter.VIGNETTE:
         radial_gradient = RadialGradientTag()
-        radial_gradient.add_stop(0, color_to_rgb_attr([0, 0, 0]), 0)
-        radial_gradient.add_stop(0.7, color_to_rgb_attr([0, 0, 0]), 0)
-        radial_gradient.add_stop(1, color_to_rgb_attr([0, 0, 0]), 153 / 255.0)
+        radial_gradient.add_stop(0, color_to_rgba_attr([0, 0, 0, 0]))
+        radial_gradient.add_stop(0.7, color_to_rgba_attr([0, 0, 0, 0]))
+        radial_gradient.add_stop(1, color_to_rgba_attr([0, 0, 0, 153]))
         radial_gradient.add_attrs({"cx": image.width // 2,
                                    "cy": image.height // 2,
                                    "r": math.ceil(image.width / math.sqrt(2)),
@@ -64,8 +68,7 @@ def add_watermark(image: SVGContainer):
                                                  "font-weight": 700,
                                                  "font-size": 40,
                                                  "writing-mode": "lr",
-                                                 "fill": color_to_rgb_attr([255, 255, 255]),
-                                                 "fill-opacity": 100 / 255.0,
+                                                 "fill": color_to_rgba_attr([255, 255, 255, 100]),
                                                  })
     image.add_inner_node(text_tag)
     image.font_importer.add_font("Roboto")
@@ -163,7 +166,6 @@ def add_ready_text_node(image: SVGContainer,
         font_weight = 900
     elif font.font.style != "Italic":
         print(f"Unexpected font style: `{font_style}`")
-    from outer.represent import color_to_rgb_attr
     text_tag = TextTag(text, attrs_dict={"x": x, "y": y,
                                          "font-family": font_family,
                                          "font-weight": font_weight,
@@ -172,8 +174,7 @@ def add_ready_text_node(image: SVGContainer,
                                          "textLength": textLength,
                                          "font-style": end_font_style,
                                          "writing-mode": "lr",
-                                         "fill": color_to_rgb_attr(text_color),
-                                         "fill-opacity": "1",
+                                         "fill": color_to_rgba_attr([*text_color, 255]),
                                          })
     image.add_inner_node(text_tag)
     image.font_importer.add_font(font_family)
@@ -244,8 +245,7 @@ def make_text_node(image: SVGContainer,
                   "font-weight": font_weight,
                   "font-size": font_size,
                   "writing-mode": writingMode,
-                  "fill": color_to_rgb_attr(text_color),
-                  "fill-opacity": "1",
+                  "fill": color_to_rgba_attr([*text_color, 255]),
                   }
     if lengthAdjust is not None:
         attrs_dict["lengthAdjust"] = lengthAdjust
@@ -260,10 +260,8 @@ def make_text_node(image: SVGContainer,
         attrs_dict = {"x": text_pos.x1, "y": text_pos.y1,
                       "width": text_pos.width(),
                       "height": text_pos.height(),
-                      "fill": color_to_rgb_attr([0, 0, 0]),
-                      "fill-opacity": "0",
-                      "stroke": color_to_rgb_attr([255, 255, 255]),
-                      "stroke-opacity": "1",
+                      "fill": color_to_rgba_attr([0, 0, 0, 0]),
+                      "stroke": color_to_rgba_attr([255, 255, 255, 255]),
                       }
         rect = RectTag(attrs_dict=attrs_dict)
         image.add_inner_node(rect)
@@ -322,7 +320,7 @@ def paste_caption(svg_cont: SVGContainer,
     from utils.deterministic_text_fitter import get_all_boxes_info_to_paste
     import numpy as np
     from utils.deterministic_text_fitter import draw_to_draw_object
-
+    debug = False
     draw = ImageDraw.Draw(pil_img, mode='RGB')
     to_draw = get_all_boxes_info_to_paste(track_artist, track_name, np.asarray(pil_img), font_dir,
                                           for_svg=for_svg)
@@ -334,9 +332,10 @@ def paste_caption(svg_cont: SVGContainer,
             t += ascent - 1
             r, b = x["text_xy_right_bottom"]
             b -= 10
-            add_ready_text_node(svg_cont, x["word"], x["color"], x["font"], (l, b), (r, t), debug=True)
-            svg_cont.add_inner_node(CircleTag.create(2, l, b + 10, "lightgreen"))
-        elif x["type"] == "circle":
+            add_ready_text_node(svg_cont, x["word"], x["color"], x["font"], (l, b), (r, t), debug=debug)
+            if debug:
+                svg_cont.add_inner_node(CircleTag.create(2, l, b + 10, "lightgreen"))
+        elif debug and x["type"] == "circle":
             d = x
             p_y, p_x = d["xy"]
             r = d["r"]

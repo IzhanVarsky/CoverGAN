@@ -71,7 +71,7 @@ def compare_for_file(f_name, colors_count):
     im.show()
 
 
-def get_palette_predictor(device=None):
+def get_palette_predictor(device=None, color_predictor_weights=None, model_type="2"):
     import os
     # print("cur path:", os.path.abspath(os.getcwd()))
     # print(os.listdir(os.getcwd()))
@@ -82,18 +82,23 @@ def get_palette_predictor(device=None):
     z_dim = 32
     num_gen_layers = 5
     audio_embedding_dim = 281
-    # model_path = f"dataset_full_covers/checkpoint/colorer_{colors_count}_colors-28800.pt"
-    # model_path = f"dataset_full_covers/checkpoint/colorer_{colors_count}_colors-600.pt"
-    # model_path = f"dataset_full_covers/checkpoint/colorer_{colors_count}_colors-1800.pt"
-    model_path = f"dataset_full_covers/checkpoint/colorer_{colors_count}_colors_sorted-100.pt"
-    # model_path = f"dataset_full_covers/checkpoint/GAN_colorer_{colors_count}_colors_sorted-200.pt"
-    if os.getcwd().endswith("covergan") or os.getcwd().endswith("scratch"):
-        gan_weights = f"./{model_path}"
+    if color_predictor_weights is None or color_predictor_weights == "":
+        # model_path = f"dataset_full_covers/checkpoint/colorer_{colors_count}_colors-28800.pt"
+        # model_path = f"dataset_full_covers/checkpoint/colorer_{colors_count}_colors-1200.pt"
+        model_path = f"dataset_full_covers/checkpoint/colorer_{colors_count}_colors-1800.pt"
+        # model_path = f"dataset_full_covers/checkpoint/colorer_{colors_count}_colors_sorted-100.pt"
+        # model_path = f"dataset_full_covers/checkpoint/GAN_colorer_{colors_count}_colors_sorted-200.pt"
+        if os.getcwd().endswith("covergan") or os.getcwd().endswith("scratch"):
+            gan_weights = f"./{model_path}"
+        else:
+            gan_weights = f"../{model_path}"
     else:
-        gan_weights = f"../{model_path}"
+        gan_weights = color_predictor_weights
 
-    gen_type = Colorer
-    gen_type = Colorer2
+    if model_type == "1":
+        gen_type = Colorer
+    else:
+        gen_type = Colorer2
     generator = gen_type(
         z_dim=z_dim,
         audio_embedding_dim=audio_embedding_dim * disc_slices,

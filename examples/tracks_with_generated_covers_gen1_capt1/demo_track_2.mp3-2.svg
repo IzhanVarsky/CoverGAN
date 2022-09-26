@@ -22,7 +22,7 @@ Z "/>
     <text fill="#E6E6E6" fill-opacity="1" x="326" y="180" style="font-size:20px;font-weight:400;font-family:Reggae One;font-style:normal;font-stretch:normal" lengthAdjust="spacing" writing-mode="tb">
         Cool Band
     </text>
-    <text fill="#E6E6E6" fill-opacity="1" x="278" y="325" style="font-size:18px;font-weight:400;font-family:Reggae One;font-style:normal;font-stretch:normal" lengthAdjust="spacing" writing-mode="lr">
+    <text fill="#E6E6E6" fill-opacity="1" x="278" y="325" style="font-size:18px;font-weight:400;font-family:Reggae One;font-style:normal;font-stretch:normal" lengthAdjust="spacingAndGlyphs" writing-mode="tb">
         New Song
     </text>
 </svg>

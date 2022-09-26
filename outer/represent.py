@@ -16,8 +16,8 @@ def tensor_color_to_int(t: torch.Tensor, a: float = None):
     return [r, g, b, a]
 
 
-def color_to_rgb_attr(color):
-    return f"rgb({color[0]}, {color[1]}, {color[2]})"
+def color_to_rgba_attr(color):
+    return f"rgba({color[0]}, {color[1]}, {color[2]}, {round(color[3] / 255.0, 2)})"
 
 
 def to_diffvg_svg_params(paths: [dict], background_color: torch.Tensor, canvas_size: int):
@@ -94,8 +94,7 @@ def as_SVGCont(cover: Cover, canvas_size: int):
     image = SVGContainer(width=canvas_size, height=canvas_size)
     backgroundColor = tensor_color_to_int(cover.background_color, 1.0)
     rect = RectTag(attrs_dict={"width": canvas_size, "height": canvas_size,
-                               "fill": color_to_rgb_attr(backgroundColor),
-                               "fill-opacity": "1"})
+                               "fill": color_to_rgba_attr(backgroundColor)})
     image.add_inner_node(rect)
     for p in cover.figures:
         points = p.points.round().to(int)  # For `self.path_segment_count_` segments
@@ -117,10 +116,8 @@ def as_SVGCont(cover: Cover, canvas_size: int):
                           segment_points[2][0].item(),
                           segment_points[2][1].item())
         path.close_path()
-        path.add_attrs({"fill": color_to_rgb_attr(fill_color),
-                        "fill-opacity": fill_color[3] / 255.0,
-                        "stroke": color_to_rgb_attr(stroke_color),
-                        "stroke-opacity": stroke_color[3] / 255.0,
+        path.add_attrs({"fill": color_to_rgba_attr(fill_color),
+                        "stroke": color_to_rgba_attr(stroke_color),
                         "stroke-width": stroke_width,
                         })
         image.add_inner_node(path)

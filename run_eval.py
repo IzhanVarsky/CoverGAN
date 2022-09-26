@@ -1,29 +1,24 @@
 #!/usr/bin/env python3
 # coding: utf-8
 
-import numpy as np
-from PIL import ImageDraw
-
 from captions.models.captioner import Captioner
 from colorer.test_model import get_palette_predictor
-from fonts_cfg import FONTS
 from outer.dataset import read_music_tensor_for_file
 from outer.emotions import Emotion, emotion_from_str, emotions_one_hot
-from outer.models.my_gen_fixed_6figs32_good import GeneratorFixedSixFigs32Good
-from outer.models.my_generator_fixed_six_figs import GeneratorFixedSixFigs
+from outer.models.my_gen_fixed_6figs32_good import MyGeneratorFixedSixFigs32Good
+from outer.models.my_generator_fixed_six_figs import MyGeneratorFixedSixFigs
 from outer.models.my_generator_fixed_six_figs_backup import MyGeneratorFixedSixFigs32
-from outer.models.my_generator_rand_figure import GeneratorRandFigure
+from outer.models.my_generator_rand_figure import MyGeneratorRandFigure
 from outer.models.my_generator_three_figs import MyGeneratorFixedThreeFigs32
 from service_utils import *
 from utils.bboxes import BBox
-from utils.deterministic_text_fitter import get_all_boxes_info_to_paste, draw_to_draw_object
 from utils.noise import get_noise
 
 
 def run_track(audio_file_name, track_artist, track_name, emotions=None,
               num_samples=5, output_dir="generated_covers",
               debug=False, num_start=0, gen_canvas_size_=512, deterministic=False,
-              apply_filters=True):
+              apply_filters=False):
     if emotions is None:
         emotions = ["joy"]
     emotions: [Emotion] = [emotion_from_str(x) for x in emotions]
@@ -33,12 +28,12 @@ def run_track(audio_file_name, track_artist, track_name, emotions=None,
 
     # gan_weights = "dataset_full_covers/checkpoint/cgan_out.pt"
     a = ("dataset_full_covers/checkpoint/checkpoint_hz.pt",
-         GeneratorRandFigure,
+         MyGeneratorRandFigure,
          512)
     b = ("dataset_full_covers/checkpoint/checkpoint_6figs_5depth_512noise.pt",
-         GeneratorFixedSixFigs,
+         MyGeneratorFixedSixFigs,
          512)
-    c = ("dataset_full_covers/checkpoint/cgan_out.pt",
+    c = ("dataset_full_covers/checkpoint/cgan_out-100.pt",
          MyGeneratorFixedSixFigs32,
          32)
     d = ("dataset_full_covers/checkpoint/cgan_out-1200.pt",
@@ -48,9 +43,9 @@ def run_track(audio_file_name, track_artist, track_name, emotions=None,
          MyGeneratorFixedThreeFigs32,
          32)
     f = ("dataset_full_covers/checkpoint/cgan_6figs_32noise_separated_palette_tanh_betas-880.pt",
-         GeneratorFixedSixFigs32Good,
+         MyGeneratorFixedSixFigs32Good,
          32)
-    gan_weights, gen_type, z_dim = f
+    gan_weights, gen_type, z_dim = a
     captioner_weights = "./weights/captioner.pt"
     checkpoint_root_ = "dataset_full_covers/checkpoint/cgan_out_dataset"
     # checkpoint_root_ = "diploma_test/test_music_ckpts"
@@ -90,7 +85,7 @@ def run_track(audio_file_name, track_artist, track_name, emotions=None,
 
     USE_PALETTE = True
     USE_TRIAD = False
-    palette_generator = get_palette_predictor(device_)
+    palette_generator = get_palette_predictor(device_, model_type="1")
 
     def generate(z, audio_embedding_disc, emotions, **kwargs):
         if not USE_PALETTE or palette_generator is None:
@@ -110,8 +105,9 @@ def run_track(audio_file_name, track_artist, track_name, emotions=None,
     if deterministic:
         noise = noise * 0
 
-    psvg_covers = generate(noise, music_tensor, emotions_tensor,
-                           use_triad_coloring=USE_TRIAD)
+    psvg_covers: [SVGContainer] = generate(noise, music_tensor, emotions_tensor,
+                                           return_psvg=True,
+                                           use_triad_coloring=USE_TRIAD)
 
     if apply_filters:
         filtered_samples = round(num_samples // 2)
@@ -125,7 +121,7 @@ def run_track(audio_file_name, track_artist, track_name, emotions=None,
     #                                                  return_diffvg_svg_params=True,
     #                                                  use_triad_coloring=USE_TRIAD)
     # cover_render_pngs = [psvg_client_.render(x) for x in psvg_covers]
-    cover_render_pngs = [x.render() for x in psvg_covers]
+    cover_render_pngs = [x.render(renderer_type='wand') for x in psvg_covers]
     pils_render = [
         png_data_to_pil_image(x, gen_canvas_size_)
         for x in cover_render_pngs
@@ -259,7 +255,7 @@ def test1():
     for (audio_file_name, track_artist, track_name) in tests:
         run_track(audio_file_name, track_artist, track_name,
                   num_samples=6,
-                  output_dir="generated_covers_svgcont2")
+                  output_dir="generated_covers_svgcont9")
 
 
 def test2():

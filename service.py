@@ -2,18 +2,16 @@ import io
 import logging
 from typing import Union
 
-import cairosvg
-import numpy as np
-from PIL import ImageDraw
-
 from captions.models.captioner import Captioner
 from outer.audio_extractor import audio_to_embedding
 from outer.emotions import Emotion, emotions_one_hot
 from outer.models.generator import Generator
-from outer.models.my_generator_fixed_six_figs import GeneratorFixedSixFigs
+from outer.models.my_generator_fixed_six_figs import MyGeneratorFixedSixFigs
+from outer.models.my_generator_fixed_six_figs_backup import MyGeneratorFixedSixFigs32
+from outer.models.my_generator_rand_figure import MyGeneratorRandFigure
+from outer.models.my_generator_three_figs import MyGeneratorFixedThreeFigs32
 from service_utils import *
 from utils.bboxes import BBox
-from utils.deterministic_text_fitter import get_all_boxes_info_to_paste, draw_to_draw_object
 from utils.noise import get_noise
 
 logger = logging.getLogger("service")
@@ -23,6 +21,9 @@ logger.addHandler(logging.StreamHandler())
 class GeneratorType(Enum):
     IlyaGenerator = 1
     GeneratorFixedSixPaths = 2
+    GeneratorFixedThreeFigs32 = 3
+    GeneratorFixedSixFigs32 = 4
+    GeneratorRandFigure = 5
 
 
 def image_to_byte_array(image: Image) -> bytes:
@@ -32,7 +33,7 @@ def image_to_byte_array(image: Image) -> bytes:
     return imgByteArr.getvalue()
 
 
-def get_ilya_generator(gen_canvas_size_, weights, device):
+def get_ilya_generator(gen_canvas_size_, weights, device, color_predictor_weights):
     z_dim_ = 32  # Dimension of the noise vector
     num_gen_layers = 5
     disc_slices_ = 6
@@ -56,16 +57,41 @@ def get_ilya_generator(gen_canvas_size_, weights, device):
     gen_weights = torch.load(weights, map_location=device)
     gen.load_state_dict(gen_weights["0_state_dict"])
     logger.info("INIT: Loaded weights for ilya_generator model.")
-    return gen
+    return gen, z_dim_
 
 
-def get_fixed_six_paths(gen_canvas_size_, weights, device):
+def get_fixed_three_figs_32(gen_canvas_size_, weights, device, color_predictor_weights):
+    z_dim = 32  # Dimension of the noise vector
+    disc_slices_ = 6
+    audio_embedding_dim = 281 * disc_slices_
+    max_stroke_width = 0.01  # relative to the canvas size
+    has_emotions = True
+    gen = MyGeneratorFixedThreeFigs32(
+        z_dim=z_dim,
+        audio_embedding_dim=audio_embedding_dim,
+        has_emotions=has_emotions,
+        num_layers=5,
+        canvas_size=gen_canvas_size_,
+        path_count=-1,
+        path_segment_count=-1,
+        max_stroke_width=max_stroke_width,
+        palette_model_weights=color_predictor_weights
+    ).to(device)
+    gen.eval()
+    logger.info("INIT: Created fixed_three_figs_32 model.")
+    gen_weights = torch.load(weights, map_location=device)
+    gen.load_state_dict(gen_weights["0_state_dict"])
+    logger.info("INIT: Loaded weights for fixed_three_figs_32 model.")
+    return gen, z_dim
+
+
+def get_fixed_six_paths(gen_canvas_size_, weights, device, color_predictor_weights):
     z_dim = 512  # Dimension of the noise vector
     disc_slices_ = 6
     audio_embedding_dim = 281 * disc_slices_
     max_stroke_width = 0.01  # relative to the canvas size
     has_emotions = True
-    gen = GeneratorFixedSixFigs(
+    gen = MyGeneratorFixedSixFigs(
         z_dim=z_dim,
         audio_embedding_dim=audio_embedding_dim,
         has_emotions=has_emotions,
@@ -80,7 +106,57 @@ def get_fixed_six_paths(gen_canvas_size_, weights, device):
     gen_weights = torch.load(weights, map_location=device)
     gen.load_state_dict(gen_weights["0_state_dict"])
     logger.info("INIT: Loaded weights for fixed_six_paths_generator model.")
-    return gen
+    return gen, z_dim
+
+
+def get_fixed_six_paths_32(gen_canvas_size_, weights, device, color_predictor_weights):
+    z_dim = 32  # Dimension of the noise vector
+    disc_slices_ = 6
+    audio_embedding_dim = 281 * disc_slices_
+    max_stroke_width = 0.01  # relative to the canvas size
+    has_emotions = True
+    gen = MyGeneratorFixedSixFigs32(
+        z_dim=z_dim,
+        audio_embedding_dim=audio_embedding_dim,
+        has_emotions=has_emotions,
+        num_layers=5,
+        canvas_size=gen_canvas_size_,
+        path_count=-1,
+        path_segment_count=-1,
+        max_stroke_width=max_stroke_width,
+        palette_model_weights=color_predictor_weights
+    ).to(device)
+    gen.eval()
+    logger.info("INIT: Created fixed_six_paths_32 model.")
+    gen_weights = torch.load(weights, map_location=device)
+    gen.load_state_dict(gen_weights["0_state_dict"])
+    logger.info("INIT: Loaded weights for fixed_six_paths_32 model.")
+    return gen, z_dim
+
+
+def get_gen_rand_figs(gen_canvas_size_, weights, device, color_predictor_weights):
+    z_dim = 512  # Dimension of the noise vector
+    disc_slices_ = 6
+    audio_embedding_dim = 281 * disc_slices_
+    max_stroke_width = 0.01  # relative to the canvas size
+    has_emotions = True
+    gen = MyGeneratorRandFigure(
+        z_dim=z_dim,
+        audio_embedding_dim=audio_embedding_dim,
+        has_emotions=has_emotions,
+        num_layers=-1,
+        canvas_size=gen_canvas_size_,
+        path_count=-1,
+        path_segment_count=-1,
+        max_stroke_width=max_stroke_width,
+        palette_model_weights=color_predictor_weights
+    ).to(device)
+    gen.eval()
+    logger.info("INIT: Created gen_rand_figs model.")
+    gen_weights = torch.load(weights, map_location=device)
+    gen.load_state_dict(gen_weights["0_state_dict"])
+    logger.info("INIT: Loaded weights for gen_rand_figs model.")
+    return gen, z_dim
 
 
 def get_captioner(captioner_canvas_size_, weights, device):
@@ -99,42 +175,44 @@ def get_captioner(captioner_canvas_size_, weights, device):
     return captioner
 
 
-class CoverService:
-    def __init__(self, gan_weights_ilya: str,
-                 captioner_weights: str,
-                 gan_weights_2: str,
+class CoverServiceForGenerator:
+    def __init__(self, gen_type: GeneratorType,
+                 gen_weights: str,
+                 use_captioner: bool,
                  font_dir: str,
+                 color_predictor_weights: str = None,
+                 captioner_weights: str = None,
                  deterministic: bool = False, debug: bool = False,
-                 log_level: int = logging.ERROR):
-        assert os.path.isfile(gan_weights_ilya)
-        assert os.path.isfile(captioner_weights)
-        assert os.path.isfile(gan_weights_2)
+                 log_level: int = logging.ERROR,
+                 renderer_type='cairo'):
+        assert os.path.isfile(gen_weights)
         assert os.path.isdir(font_dir)
 
         self.font_dir_ = font_dir
         self.device_ = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.deterministic_ = deterministic
         self.debug_ = debug
+        self.use_captioner = use_captioner
+        self.gen_type = gen_type
+        self.renderer_type = renderer_type
         logger.setLevel(log_level)
 
-        # Architecture properties
-        self.z_dim_ = 32  # Dimension of the noise vector
         self.disc_slices_ = 6
         self.gen_canvas_size_ = 512
         self.captioner_canvas_size_ = 256
 
-        self.ilya_generator = get_ilya_generator(self.gen_canvas_size_, gan_weights_ilya, self.device_)
-        self.generator2 = get_fixed_six_paths(self.gen_canvas_size_, gan_weights_2, self.device_)
-        self.captioner_ = get_captioner(self.captioner_canvas_size_, captioner_weights, self.device_)
+        self.generator, self.gen_noise_zdim = to_func[gen_type](self.gen_canvas_size_, gen_weights,
+                                                                self.device_, color_predictor_weights)
+
+        if self.use_captioner:
+            self.captioner = get_captioner(self.captioner_canvas_size_, captioner_weights, self.device_)
 
     def generate(self,
                  audio_file_name: str, track_artist: str, track_name: str,
-                 emotions: [Emotion], num_samples: int, generatorType: GeneratorType,
-                 use_captioner: bool,
-                 rasterize=False,
+                 emotions: [Emotion], num_samples: int,
+                 use_color_predictor=False,
                  apply_filters=True, filtered_samples=None, watermark=False
                  ) -> Union[List[str], List[Tuple[str, bytes]]]:
-        # logger.info(f"!!!! USE CAPTIONER: {use_captioner}")
         logger.info("GEN: Creating audio embedding...")
         # Prepare the input
         music_tensor = torch.from_numpy(audio_to_embedding(audio_file_name))
@@ -147,23 +225,10 @@ class CoverService:
         logger.info("GEN: Audio embedding done.")
         emotions_tensor = emotions_one_hot(emotions).to(self.device_).unsqueeze(dim=0).repeat((num_samples, 1))
 
-        # Generate the covers
-        if generatorType == GeneratorType.IlyaGenerator:
-            logger.info("GEN: Generating the covers with IlyaGenerator...")
-            ilya_noise = self.create_noise(num_samples, z_dim=32)
-            psvg_covers = self.ilya_generator(ilya_noise, music_tensor, emotions_tensor,
-                                                               return_psvg=True)
-        elif generatorType == GeneratorType.GeneratorFixedSixPaths:
-            logger.info("GEN: Generating the covers with GeneratorFixedSixPaths...")
-            gen2_noise = self.create_noise(num_samples, z_dim=512)
-            psvg_covers = self.generator2(gen2_noise, music_tensor, emotions_tensor,
-                                          return_psvg=True,
-                                          return_diffvg_svg_params=False,
-                                          use_triad_coloring=False)
-        else:
-            msg = f"Generator type `{generatorType}` is not supported :("
-            logger.error(msg)
-            raise Exception(msg)
+        logger.info(f"GEN: Generating the covers with {self.gen_type}...")
+        noise = self.create_noise(num_samples, z_dim=self.gen_noise_zdim)
+        psvg_covers = self.generator(noise, music_tensor, emotions_tensor, return_psvg=True)
+        # use_triad_coloring?? use_palette??
         logger.info("GEN: Covers generated.")
 
         # Apply overlay filters, if requested
@@ -180,7 +245,7 @@ class CoverService:
         logger.info("PSVG: Rendering backgrounds...")
         cover_render_pngs = [x.render(renderer_type="cairo") for x in psvg_covers]
         logger.info("PSVG: Backgrounds rendered.")
-        if use_captioner:
+        if self.use_captioner:
             logger.info("Using Captioner Model...")
             cover_render_pils = [
                 png_data_to_pil_image(x, self.captioner_canvas_size_)
@@ -190,7 +255,7 @@ class CoverService:
 
             # Generate the captions
             logger.info("CAPT: Generating captions...")
-            pos_preds, color_preds = self.captioner_(cover_render_tensors)
+            pos_preds, color_preds = self.captioner(cover_render_tensors)
             logger.info("CAPT: Captions generated.")
             pos_preds = torch.round(pos_preds * self.gen_canvas_size_).to(int)
             color_preds = torch.round(color_preds * 255).to(int)
@@ -241,30 +306,15 @@ class CoverService:
             for psvg_cover in psvg_covers:
                 add_watermark(psvg_cover)
 
-        if rasterize:
-            # [(svg_xml: str, png_data: bytes)]
-            output_func = lambda x: (str(x), x.render(renderer_type="cairo"))
-            logger.info("PSVG: Making SVG+PNG...")
-        else:
-            # [svg_xml: str]
-            output_func = str
-            logger.info("PSVG: Making SVG...")
-        result = list(map(output_func, psvg_covers))
-
-        new_res = []
-        for i, res in enumerate(result):
-            if rasterize:
-                (svg_xml, png_data) = res
-                # svg_xml = add_font_imports_to_svg_xml(svg_xml)
-                if not use_captioner:
-                    png_data = image_to_byte_array(pils_render[i])
-                else:
-                    png_data = cairosvg.svg2png(bytestring=svg_xml.encode("utf-8"))
-                new_res.append((svg_xml, png_data))
-            else:
-                # new_res.append(add_font_imports_to_svg_xml(res))
-                new_res.append(res)
-        return new_res
+        logger.info("PSVG: Making SVG+PNG...")
+        if self.use_captioner:
+            return list(map(lambda x: (str(x), x.render(renderer_type=self.renderer_type)), psvg_covers))
+        #  return PILs images as rendered (ground truth)
+        res = []
+        for i, psvg in enumerate(psvg_covers):
+            png_data = image_to_byte_array(pils_render[i])
+            res.append((str(psvg), png_data))
+        return res
 
     def create_noise(self, num_samples, z_dim):
         if self.deterministic_:
@@ -272,3 +322,12 @@ class CoverService:
         else:
             noise = get_noise(num_samples, z_dim, device=self.device_)
         return noise
+
+
+to_func = {
+    GeneratorType.IlyaGenerator: get_ilya_generator,
+    GeneratorType.GeneratorFixedThreeFigs32: get_fixed_three_figs_32,
+    GeneratorType.GeneratorFixedSixFigs32: get_fixed_six_paths_32,
+    GeneratorType.GeneratorFixedSixPaths: get_fixed_six_paths,
+    GeneratorType.GeneratorRandFigure: get_gen_rand_figs,
+}

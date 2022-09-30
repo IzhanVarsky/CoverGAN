@@ -28,6 +28,7 @@ outer/models/rnn_generator.py
 outer/*.svg
 outer/*.png
 repair_all_bash_scripts_to_linux.sh
+old_README.md
 
 .idea
 # Byte-compiled / optimized / DLL files

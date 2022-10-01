@@ -29,6 +29,13 @@ outer/*.svg
 outer/*.png
 repair_all_bash_scripts_to_linux.sh
 old_README.md
+dataset_demo_4
+dataset_emoji_4
+dataset_emoji_52
+dataset_full_covers
+dataset_small_20
+diploma_test
+weights
 
 .idea
 # Byte-compiled / optimized / DLL files

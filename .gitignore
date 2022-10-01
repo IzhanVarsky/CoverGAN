@@ -8,6 +8,8 @@ colorer/*.png
 diffvg_tmp_old
 diffvg_tmp
 fonts
+fonts_small
+fonts_big
 gen_samples_demo
 generated_covers_*
 not_found_audio

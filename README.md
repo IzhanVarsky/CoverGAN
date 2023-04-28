@@ -31,7 +31,7 @@ Available emotions:
 * Sweet
 * Wary
 
-The service is available on http://109.188.135.85:5001.
+The service is available on http://109.188.135.85:5001/covergan.
 
 ## Service functionality
 
